@@ -36,7 +36,7 @@ SELECT COUNT(*) FROM Evolution;
 
 SELECT COUNT(*) FROM Pokemon WHERE type = "Water" OR type = "Electric" OR type = "Psychic";
 
-SELECT COUNT(*) FROM Trainer t, CatchedPokemon c WHERE t.id = c.owner_id AND hometown = "Sangnok City";
+SELECT COUNT(*) FROM (SELECT DISTINCT c.pid FROM Trainer t, CatchedPokemon c WHERE t.id = c.owner_id AND hometown = "Sangnok City") AS T;
 
 SELECT MAX(level) FROM Trainer t, CatchedPokemon c WHERE t.id = c.owner_id AND hometown = "Sangnok City";
 
