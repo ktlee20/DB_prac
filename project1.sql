@@ -69,6 +69,7 @@ SELECT t.name, COUNT(*) AS num FROM Trainer t, CatchedPokemon c WHERE t.id = c.o
 
 SELECT t.name, AVG(level) AS lev  FROM Trainer t, CatchedPokemon c, Pokemon p WHERE t.id = c.owner_id AND p.id = c.pid AND p.type IN ("Normal", "Electric") GROUP BY t.name ORDER BY lev;
 
+SELECT DISTINCT p.name, t.name, i.description FROM Pokemon p, Trainer t, City i, CatchedPokemon c WHERE c.pid = p.id AND c.owner_id = t.id AND t.hometown = i.name AND p.id = 152 ORDER BY level;
 
 SELECT e1.before_id, p1.name, e1.after_id, p2.name, e2.after_id, p3.name FROM Evolution e1, Evolution e2, Pokemon p1, Pokemon p2, Pokemon p3 WHERE p1.id = e1.before_id AND p2.id = e1.after_id AND p3.id = e2.after_id AND e1.after_id = e2.before_id ORDER BY e1.before_id;
 
@@ -88,7 +89,7 @@ SELECT t.name, SUM(LEVEL) AS LEV FROM Trainer t, CatchedPokemon c WHERE t.id = c
 
 SELECT name FROM Pokemon p, Evolution e WHERE p.id = e.after_id AND p.id NOT IN (SELECT p1.id FROM Pokemon p1, Evolution e1, Evolution e2 WHERE p1.id = e2.after_id AND e1.after_id = e2.before_id) ORDER BY name;
 
-SELECT t.name, COUNT(nickname) FROM Trainer t, CatchedPokemon c WHERE t.id = c.owner_id GROUP BY t.name HAVING COUNT(nickname) >= 2 ORDER BY name;
+SELECT t.name FROM Trainer t WHERE t.id IN (SELECT DISTINCT c1.owner_id FROM CatchedPokemon c1, CatchedPokemon c2 WHERE c1.owner_id = c2.owner_id AND c1.pid = c2.pid AND c1.id <> c2.id) ORDER BY t.name;
 
 SELECT t.hometown, c.nickname FROM Trainer t, CatchedPokemon c, (SELECT t1.hometown, MAX(level) AS m FROM Trainer t1, CatchedPokemon c1 WHERE t1.id = c1.owner_id GROUP BY t1.hometown) AS tt WHERE t.id = c.owner_id AND t.hometown = tt.hometown AND c.level = m ORDER BY t.hometown;
 
