@@ -22,7 +22,7 @@ SELECT AVG(level) from CatchedPokemon c, Trainer t WHERE c.owner_id = t.id AND t
 
 SELECT nickname FROM CatchedPokemon WHERE nickname NOT LIKE "T%" ORDER BY nickname;
 
-SELECT nickname FROM CatchedPokemon WHERE level >= 50 AND owner_id >= 6 ORDER BY nickname;
+SELECT nickname FROM CatchedPokemon WHERE level <= 50 AND owner_id >= 6 ORDER BY nickname;
 
 SELECT id, name FROM Pokemon ORDER BY id;
 
