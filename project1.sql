@@ -66,9 +66,9 @@ SELECT nickname FROM CatchedPokemon WHERE nickname LIKE "% %" ORDER BY nickname 
 
 SELECT t.name, COUNT(*) AS num FROM Trainer t, CatchedPokemon c WHERE t.id = c.owner_id GROUP BY t.name HAVING num >= 4 ORDER BY t.name;
 
-SELECT p.type, AVG(c.level) AS avg_level FROM Trainer t, CatchedPokemon c, Pokemon p WHERE t.id = c.owner_id AND p.id = c.pid AND p.type IN ("Normal", "Electric") GROUP BY p.type ORDER BY avg_level;
 
-SELECT p.name, t.name, i.description FROM CatchedPokemon c, Pokemon p, Trainer t, City i WHERE t.hometown = i.name AND c.pid = p.id AND c.owner_id = t.id AND c.pid = 152 ORDER BY level DESC;
+SELECT t.name, AVG(level) AS lev  FROM Trainer t, CatchedPokemon c, Pokemon p WHERE t.id = c.owner_id AND p.id = c.pid AND p.type IN ("Normal", "Electric") GROUP BY t.name ORDER BY lev;
+
 
 SELECT e1.before_id, p1.name, e1.after_id, p2.name, e2.after_id, p3.name FROM Evolution e1, Evolution e2, Pokemon p1, Pokemon p2, Pokemon p3 WHERE p1.id = e1.before_id AND p2.id = e1.after_id AND p3.id = e2.after_id AND e1.after_id = e2.before_id ORDER BY e1.before_id;
 
