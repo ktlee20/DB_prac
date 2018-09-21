@@ -1,6 +1,6 @@
 USE Pokemon;
 
-SELECT T.name from Trainer T, CatchedPokemon C WHERE T.id = C.owner_id GROUP BY T.name ORDER BY COUNT(*) DESC, T.name;
+SELECT T.name from Trainer T, CatchedPokemon C WHERE T.id = C.owner_id GROUP BY T.name HAVING COUNT(*) >= 3 ORDER BY COUNT(*) DESC, T.name;
 
 CREATE VIEW POKNUM AS SELECT COUNT(*) AS num FROM Pokemon GROUP BY type ORDER BY num DESC limit 2;
 
