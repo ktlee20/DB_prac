@@ -40,7 +40,7 @@ SELECT COUNT(*) FROM (SELECT DISTINCT c.pid FROM Trainer t, CatchedPokemon c WHE
 
 SELECT MAX(level) FROM Trainer t, CatchedPokemon c WHERE t.id = c.owner_id AND hometown = "Sangnok City";
 
-SELECT COUNT(type) FROM Pokemon p, Gym g, CatchedPokemon c WHERE p.id = c.pid AND g.leader_id = c.owner_id AND City = "Sangnok City";
+SELECT COUNT(*) FROM (SELECT DISTINCT p.type FROM Pokemon p, CatchedPokemon c, Trainer t WHERE t.id = c.owner_id AND c.pid = p.id AND t.hometown = "Sangnok City" AND t.id = (SELECT g.leader_id FROM Gym g WHERE g.city = "Sangnok City")) AS t;
 
 SELECT t.name, COUNT(*) AS num FROM Trainer t, CatchedPokemon c WHERE t.id = c.owner_id AND t.hometown = "Sangnok City" GROUP BY t.name ORDER BY num;
 
