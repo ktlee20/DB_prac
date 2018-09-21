@@ -26,7 +26,7 @@ SELECT nickname FROM CatchedPokemon WHERE level <= 50 AND owner_id >= 6 ORDER BY
 
 SELECT id, name FROM Pokemon ORDER BY id;
 
-SELECT nickname FROM CatchedPokemon WHERE level >= 50 ORDER BY level;
+SELECT nickname FROM CatchedPokemon WHERE level <= 50 ORDER BY level;
 
 SELECT p.name, p.id FROM Trainer t, Pokemon p, CatchedPokemon c WHERE t.id = c.owner_id AND p.id = c.pid AND t.hometown = "Sangnok City" ORDER BY p.id;
 
