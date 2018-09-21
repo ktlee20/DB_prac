@@ -46,7 +46,7 @@ SELECT t.name, COUNT(*) AS num FROM Trainer t, CatchedPokemon c WHERE t.id = c.o
 
 SELECT name FROM Pokemon WHERE name LIKE "a%" OR name LIKE "e%" OR name LIKE "i%" OR name LIKE "o%" OR name LIKE "u%" ORDER BY name;
 
-SELECT type, COUNT(*) FROM Pokemon GROUP BY type ORDER BY type;
+SELECT type, COUNT(*) AS num  FROM Pokemon GROUP BY type ORDER BY num, type;
 
 SELECT DISTINCT t.name FROM Trainer t, CatchedPokemon c WHERE t.id = c.owner_id AND level <= 10 ORDER BY t.name;
 
