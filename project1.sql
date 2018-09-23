@@ -4,7 +4,7 @@ SELECT T.name from Trainer T, CatchedPokemon C WHERE T.id = C.owner_id GROUP BY 
 
 CREATE VIEW POKNUM AS SELECT COUNT(*) AS num FROM Pokemon GROUP BY type ORDER BY num DESC limit 2;
 
-SELECT name FROM Pokemon AS p1, (SELECT t.type , COUNT(*) AS num FROM Pokemon t GROUP BY t.type ORDER BY num DESC) AS p2 WHERE p2.type = p1.type AND num IN (SELECT * FROM POKNUM) ORDER BY name;
+SELECT name FROM Pokemon AS p1, (SELECT t.type , COUNT(*) AS num FROM Pokemon t GROUP BY t.type ORDER BY num DESC) AS p2 WHERE p2.type = p1.type AND num IN (SELECT * FROM POKNUM ) ORDER BY name;
 
 DROP VIEW POKNUM;
 
@@ -28,7 +28,7 @@ SELECT id, name FROM Pokemon ORDER BY id;
 
 SELECT nickname FROM CatchedPokemon WHERE level <= 50 ORDER BY level;
 
-SELECT p.name, p.id FROM Trainer t, Pokemon p, CatchedPokemon c WHERE t.id = c.owner_id AND p.id = c.pid AND t.hometown = "Sangnok City" ORDER BY p.id;
+SELECT DISTINCT p.name, p.id FROM Trainer t, Pokemon p, CatchedPokemon c WHERE t.id = c.owner_id AND p.id = c.pid AND t.hometown = "Sangnok City" ORDER BY p.id;
 
 SELECT DISTINCT nickname FROM Gym g, CatchedPokemon c, Pokemon p WHERE c.pid = p.id AND g.leader_id = c.owner_id AND p.type = "Water" ORDER BY nickname;
 
@@ -52,15 +52,10 @@ SELECT DISTINCT t.name FROM Trainer t, CatchedPokemon c WHERE t.id = c.owner_id 
 
 SELECT DISTINCT t.hometown, AVG(level) AS al FROM Trainer t, CatchedPokemon c WHERE t.id = c.owner_id GROUP BY t.hometown ORDER BY al;
 
-
-CREATE VIEW SANGNOKPOC AS SELECT DISTINCT p.name, t.hometown FROM Pokemon p, CatchedPokemon c, Trainer t WHERE c.owner_id = t.id AND c.pid = p.id AND hometown = "Sangnok City";
-
-CREATE VIEW BROWNPOC AS SELECT DISTINCT p.name, t.hometown FROM Pokemon p, CatchedPokemon c, Trainer t WHERE c.owner_id = t.id AND c.pid = p.id AND hometown = "Brown City";
-
-SELECT DISTINCT s.name FROM BROWNPOC b , SANGNOKPOC s WHERE s.name = b.name;
-
-DROP VIEW SANGNOKPOC;
-DROP VIEW BROWNPOC;
+SELECT DISTINCT s.name 
+FROM (SELECT DISTINCT p.name, t.hometown FROM Pokemon p, CatchedPokemon c, Trainer t WHERE c.owner_id = t.id AND c.pid = p.id AND hometown = "Sangnok City") As s,
+	 (SELECT DISTINCT p.name, t.hometown FROM Pokemon p, CatchedPokemon c, Trainer t WHERE c.owner_id = t.id AND c.pid = p.id AND hometown = "Brown City") As b
+WHERE s.name = b.name;
 
 SELECT nickname FROM CatchedPokemon WHERE nickname LIKE "% %" ORDER BY nickname DESC;
 
@@ -71,7 +66,7 @@ SELECT t.name, AVG(level) AS lev  FROM Trainer t, CatchedPokemon c, Pokemon p WH
 
 SELECT DISTINCT p.name, t.name, i.description FROM Pokemon p, Trainer t, City i, CatchedPokemon c WHERE c.pid = p.id AND c.owner_id = t.id AND t.hometown = i.name AND p.id = 152 ORDER BY level;
 
-SELECT e1.before_id, p1.name, e1.after_id, p2.name, e2.after_id, p3.name FROM Evolution e1, Evolution e2, Pokemon p1, Pokemon p2, Pokemon p3 WHERE p1.id = e1.before_id AND p2.id = e1.after_id AND p3.id = e2.after_id AND e1.after_id = e2.before_id ORDER BY e1.before_id;
+SELECT e1.before_id, p1.name, p2.name, p3.name FROM Evolution e1, Evolution e2, Pokemon p1, Pokemon p2, Pokemon p3 WHERE p1.id = e1.before_id AND p2.id = e1.after_id AND p3.id = e2.after_id AND e1.after_id = e2.before_id ORDER BY e1.before_id;
 
 SELECT name FROM Pokemon WHERE id >= 10 AND id < 100 ORDER BY name;
 
