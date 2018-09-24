@@ -2,11 +2,7 @@ USE Pokemon;
 
 SELECT T.name from Trainer T, CatchedPokemon C WHERE T.id = C.owner_id GROUP BY T.name HAVING COUNT(*) >= 3 ORDER BY COUNT(*) DESC, T.name;
 
-CREATE VIEW POKNUM AS SELECT COUNT(*) AS num FROM Pokemon GROUP BY type ORDER BY num DESC limit 2;
-
-SELECT name FROM Pokemon AS p1, (SELECT t.type , COUNT(*) AS num FROM Pokemon t GROUP BY t.type ORDER BY num DESC) AS p2 WHERE p2.type = p1.type AND num IN (SELECT * FROM POKNUM ) ORDER BY name;
-
-DROP VIEW POKNUM;
+SELECT name FROM Pokemon AS p1, (SELECT t.type, COUNT(*) AS num FROM Pokemon t GROUP BY t.type ORDER BY NUM DESC, t.type limit 2) AS p2 WHERE p2.type = p1.type ORDER BY name;
 
 SELECT name FROM Pokemon WHERE name LIKE "_o%";
 
