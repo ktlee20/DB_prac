@@ -2,7 +2,7 @@ USE Pokemon;
 
 SELECT T.name from Trainer T, CatchedPokemon C WHERE T.id = C.owner_id GROUP BY T.name HAVING COUNT(*) >= 3 ORDER BY COUNT(*) DESC, T.name;
 
-SELECT name FROM Pokemon AS p1, (SELECT t.type, COUNT(*) AS num FROM Pokemon t GROUP BY t.type ORDER BY NUM DESC, t.type limit 2) AS p2 WHERE p2.type = p1.type ORDER BY name;
+SELECT name FROM Pokemon AS p1, (SELECT t.type, COUNT(*) AS num FROM Pokemon t GROUP BY t.type ORDER BY NUM DESC limit 2) AS p2 WHERE p2.type = p1.type ORDER BY name;
 
 SELECT name FROM Pokemon WHERE name LIKE "_o%";
 
@@ -55,12 +55,11 @@ WHERE s.name = b.name;
 
 SELECT nickname FROM CatchedPokemon WHERE nickname LIKE "% %" ORDER BY nickname DESC;
 
-SELECT t.name, COUNT(*) AS num FROM Trainer t, CatchedPokemon c WHERE t.id = c.owner_id GROUP BY t.name HAVING num >= 4 ORDER BY t.name;
-
+SELECT t.name, MAX(c.level) AS num FROM Trainer t, CatchedPokemon c WHERE t.id = c.owner_id GROUP BY t.name HAVING num >= 4 ORDER BY t.name;
 
 SELECT t.name, AVG(level) AS lev  FROM Trainer t, CatchedPokemon c, Pokemon p WHERE t.id = c.owner_id AND p.id = c.pid AND p.type IN ("Normal", "Electric") GROUP BY t.name ORDER BY lev;
 
-SELECT DISTINCT p.name, t.name, i.description FROM Pokemon p, Trainer t, City i, CatchedPokemon c WHERE c.pid = p.id AND c.owner_id = t.id AND t.hometown = i.name AND p.id = 152 ORDER BY level;
+SELECT p.name, t.name, i.description FROM Pokemon p, Trainer t, City i, CatchedPokemon c WHERE c.pid = p.id AND c.owner_id = t.id AND t.hometown = i.name AND p.id = 152 ORDER BY level DESC;
 
 SELECT e1.before_id, p1.name, p2.name, p3.name FROM Evolution e1, Evolution e2, Pokemon p1, Pokemon p2, Pokemon p3 WHERE p1.id = e1.before_id AND p2.id = e1.after_id AND p3.id = e2.after_id AND e1.after_id = e2.before_id ORDER BY e1.before_id;
 
@@ -74,7 +73,7 @@ SELECT t.name FROM Gym g, Trainer t WHERE t.id = g.leader_id ORDER BY name;
 
 SELECT type, (COUNT(*)/(SELECT COUNT(*) FROM Pokemon)) AS ratio FROM Pokemon p GROUP BY type ORDER BY ratio DESC LIMIT 1;
 
-SELECT DISTINCT t.name FROM Trainer t, CatchedPokemon c WHERE t.id = c.owner_id AND c.nickname LIKE "A%" ORDER BY name;
+SELECT t.name FROM Trainer t, CatchedPokemon c WHERE t.id = c.owner_id AND c.nickname LIKE "A%" ORDER BY name;
 
 SELECT t.name, SUM(LEVEL) AS LEV FROM Trainer t, CatchedPokemon c WHERE t.id = c.owner_id GROUP BY t.name ORDER BY LEV DESC LIMIT 1;
 
