@@ -15,7 +15,7 @@ typedef dbint pagenum_t;
 
 typedef struct page_header
 {
-	dbint other_page;
+	dbint parent_page;
 	int is_leaf;
 	int numOfKeys;
 	char reserved[104];

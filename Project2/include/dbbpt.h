@@ -11,9 +11,9 @@ typedef dbint pagenum_t;
 typedef Page node;
 
 void findleaf(node * leaf, int key);
-int find(int key);
+char* find(node * leaf, int key);
 int findkey(node* leaf, int key);
 Records* make_record(char * value);
-node * insert(int key, char * value);
+int insert(int key, char * value);
 
 #endif

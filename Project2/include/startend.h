@@ -4,6 +4,7 @@
 #include "defines.h"
 
 void dbStart();
+int open_db(char * pathname);
 void headerInit();
 void dbEnd();
 

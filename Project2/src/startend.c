@@ -7,10 +7,18 @@
 
 void dbstart()
 {
-	Page temphead;
 	default_file = NULL;
 	totalp = 0;
 	currentp = 0;
+	open_db("default.db");
+
+	return;
+}
+
+int open_db(char * pathname)
+{
+	Page temphead;
+
 	default_file = fopen("default.db","r+b");
 	if(default_file == NULL)
 	{
@@ -21,11 +29,18 @@ void dbstart()
 		temphead.headerp.numOfPage = 1;
 		fwrite(&temphead,PAGESIZE,1,default_file);
 		currentp = 0;
-		return;
+		
+		if(default_file == NULL)
+			return -1;
+
+		return 0;
 	}
 	currentp = 0;
 
-	return;
+	if(default_file == NULL)
+		return -1;
+
+	return 0;
 }
 
 void headerInit()

@@ -8,12 +8,25 @@
 pagenum_t file_alloc_page()
 {
 	char t = '\0';
+	Page freei;
+
+	if(Header.headerp.freep_offset== 0)
+	{
 	fseek(default_file,0,SEEK_END);
 	fwrite(&t,1,PAGESIZE,default_file);
 	totalp++;
 	currentp=totalp;
 
 	return currentp;
+	}
+	else
+	{
+		file_read_page(Header.headerp.freep_offset, &freei);
+		currentp = Header.headerp.freep_offset;
+		Header.headerp.freep_offset = freei.freep.next_freep;	
+		
+		return currentp;
+	}
 }
 
 void file_free_page(pagenum_t pagenum)
