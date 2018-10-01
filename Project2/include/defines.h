@@ -7,6 +7,9 @@
 #define LBRFACTOR 32
 #define IBRFACTOR 249
 
+#define FALSE 0
+#define TRUE 1
+
 typedef uint64_t dbint;
 typedef dbint pagenum_t;
 
@@ -50,13 +53,11 @@ typedef struct leaf_page
 	struct page_header pheader;
 	struct _records records[LBRFACTOR];
 } LeafPage;
-
 typedef struct internal_page
 {
 	struct page_header pheader;
 	struct ientity entities[IBRFACTOR-1];	
 } InternalPage;
-
 typedef union _pages_
 {
 	struct header_page headerp;
@@ -64,5 +65,4 @@ typedef union _pages_
 	struct leaf_page leafp;
 	struct internal_page internalp;
 } Page;
-
 #endif

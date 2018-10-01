@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include "defines.h"
 #include "globals.h"
@@ -7,7 +8,9 @@
 void dbstart()
 {
 	Page temphead;
-	dbint size;
+	default_file = NULL;
+	totalp = 0;
+	currentp = 0;
 	default_file = fopen("default.db","r+b");
 	if(default_file == NULL)
 	{
@@ -20,8 +23,6 @@ void dbstart()
 		currentp = 0;
 		return;
 	}
-	fseek(default_file,0,SEEK_END);
-	size = ftell(default_file);
 	currentp = 0;
 
 	return;

@@ -7,6 +7,6 @@ extern FILE * default_file;
 extern pagenum_t totalp;
 extern pagenum_t currentp;
 extern Page Header;
-extern Page * rootnodep;
+extern Page rootnodep;
 
 #endif
