@@ -6,9 +6,12 @@
 #define PAGESIZE 4096
 #define LBRFACTOR 32
 #define IBRFACTOR 249
+#define VALUESIZE 120
 
 #define FALSE 0
 #define TRUE 1
+
+#define CUT(x) (((x) % 2 == 1) ? (((x)/2) + 1) : (x)/2 )
 
 typedef uint64_t dbint;
 typedef dbint pagenum_t;
@@ -25,7 +28,7 @@ typedef struct page_header
 typedef struct _records
 {
 	dbint key;
-	char value[120];
+	char value[VALUESIZE];
 } Records;
 
 typedef struct ientity
