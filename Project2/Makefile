@@ -4,8 +4,8 @@ SRCDIR=src/
 INC=include/
 LIBS=lib/
 
-TARGET_SRC:=$(SRCDIR)main.c $(SRCDIR)page.c $(SRCDIR)startend.c  $(SRCDIR)dbbpt.c 
-TARGET_OBJ:=$(SRCDIR)main.o $(SRCDIR)page.o $(SRCDIR)startend.o $(SRCDIR)dbbpt.o 
+TARGET_SRC:=$(SRCDIR)main.c $(SRCDIR)DiskMagager.c $(SRCDIR)FileIndexManager.c $(SRCDIR)dbbpt.c $(SRCDIR)dbinit.c 
+TARGET_OBJ:=$(SRCDIR)main.o $(SRCDIR)DiskManager.o $(SRCDIR)FileIndexManager.o $(SRCDIR)dbbpt.o $(SRCDIR)dbinit.o
 
 CFLAGS+= -g -I $(INC)
 OBJFLAGS+= -c -I $(INC)
@@ -15,9 +15,10 @@ TARGET:=main
 all: $(TARGET)
 
 $(TARGET) : $(TARGET_OBJ)
-	$(CC) $(OBJFLAGS) $(SRCDIR)page.c -o $(SRCDIR)page.o 
-	$(CC) $(OBJFLAGS) $(SRCDIR)startend.c -o $(SRCDIR)startend.o
+	$(CC) $(OBJFLAGS) $(SRCDIR)DiskManager.c -o $(SRCDIR)DiskManager.o 
+	$(CC) $(OBJFLAGS) $(SRCDIR)FileIndexManager.c -o $(SRCDIR)FileIndexManager.o
 	$(CC) $(OBJFLAGS) $(SRCDIR)dbbpt.c -o $(SRCDIR)dbbpt.o 
+	$(CC) $(OBJFLAGS) $(SRCDIR)dbinit.c -o $(SRCDIR)dbinit.o 
 	$(CC) $(CFLAGS) $(TARGET_OBJ) -o $(TARGET)
 
 clean:

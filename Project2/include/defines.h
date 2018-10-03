@@ -11,9 +11,9 @@
 #define FALSE 0
 #define TRUE 1
 
-#define CUT(x) (((x) % 2 == 1) ? (((x)/2) + 1) : (x)/2 )
+#define CUT(x) ((x) / 2)
 
-typedef uint64_t dbint;
+typedef int64_t dbint;
 typedef dbint pagenum_t;
 
 typedef struct page_header

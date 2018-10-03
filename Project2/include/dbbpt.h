@@ -1,28 +1,27 @@
-#ifndef __DISK_BASE_BPT_H_
-#define __DISK_BASE_BPT_H_
+#ifndef __DISK_BASE_BPLUSTREE_
+#define __DISK_BASE_BPLUSTREE_
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
 #include "defines.h"
 
-typedef uint64_t dbint;
-typedef dbint pagenum_t;
 typedef Page node;
-
-pagenum_t findleaf(node * leaf, int key);
-char* find(int key);
-int findkey(node* leaf, int key);
-Records* make_record(char * value);
-node * make_node();
-node * make_leaf(dbint parent_page, dbint other_page_offset);
-int start_new_tree(int key, Records* pointer);
-int insert_into_leaf(node * leaf,pagenum_t offset, int key, Records* poiner);
-int insert_into_parent(pagenum_t loffset, int key, pagenum_t roffset);
-int insert_into_node(node * n, int left_index, int key, pagenum_t roffset);
-int insert_into_new_root(pagenum_t loffset, int key, pagenum_t roffset);
-int insert_into_leaf_after_splitting(node * leaf, int key, Records* pointer, pagenum_t offset);
-int insert_into_node_after_splitting(pagenum_t oldoffest, int left_index, int key, pagenum_t roffset);
-int insert(int key, char * value);
-
+node * dbinsert(node * root, int key, char * value);
+Records * dbfind(node * root, int key,pagenum_t* poffset);
+node * find_leaf(node * root, int key,pagenum_t* poffset);
+Records * make_records(char * value);
+node * start_new_tree(int key, Records* pointer);
+node * make_leaf(void);
+node * make_node(void);
+node * insert_into_leaf(node * leaf, int key, Records* pointer,pagenum_t offset);
+node * insert_into_leaf_after_splitting(node * leaf, int key, Records * pointer, pagenum_t old_offset);
+int get_left_index(node * parent, pagenum_t loffset);
+node * insert_into_new_root(node * left, pagenum_t loffset, int key, node * right, pagenum_t roffset);
+node * insert_into_node(node *n, int left_index, int key, node * right, pagenum_t roffset);
+node * insert_into_parent(node * left, pagenum_t loffset, int key, node * right, pagenum_t roffset);
+node * insert_into_node_after_splitting(node * old_node, pagenum_t old_offset, int left_index, int key, node * right, pagenum_t roffset);
+node * dbdelete(node * root, int key);
+node * delete_entry(node * n, int key, void * pointer, pagenum_t offset);
+int get_neighbor_index(node * n, pagenum_t offset, pagenum_t * neighbor_offset);
+node * adjust_root(node * root);
+node * remove_entry_from_node(node * n, int key, node * pointer, pagenum_t offset);
+node * coalesce_nodes(node * n, pagenum_t curoffset, pagenum_t noffset, int n_index);
 #endif
