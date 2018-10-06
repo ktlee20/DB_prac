@@ -54,7 +54,7 @@ typedef struct free_page
 typedef struct leaf_page
 {
 	struct page_header pheader;
-	struct _records records[LBRFACTOR];
+	struct _records records[LBRFACTOR - 1];
 } LeafPage;
 typedef struct internal_page
 {

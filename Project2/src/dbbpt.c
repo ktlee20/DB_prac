@@ -6,29 +6,29 @@
 #include "globals.h"
 #include "DiskManager.h"
 
-node * make_node()
+node * make_node(pagenum_t parent_off, pagenum_t otherp_off)
 {
 	node * new_node;
 	new_node = (node*)malloc(sizeof(node));
 	new_node->internalp.pheader.is_leaf = FALSE;
 	new_node->internalp.pheader.numOfKeys = 0;
-	new_node->internalp.pheader.parent_page = 0;
-	new_node->internalp.pheader.other_page_offset = 0;
+	new_node->internalp.pheader.parent_page = parent_off;
+	new_node->internalp.pheader.other_page_offset = otherp_off;
 
 	return new_node;
 }
-node * make_leaf()
+node * make_leaf(pagenum_t parent_off, pagenum_t otherp_off)
 {
-	node * leaf = make_node();
+	node * leaf = make_node(parent_off, otherp_off);
 	leaf->leafp.pheader.is_leaf = TRUE;
 
 	return leaf;
 }
 
-node * start_new_tree(int key, Records* pointer)
+node * start_new_tree(dbint key, Records* pointer)
 {
 	pagenum_t rootnum = file_alloc_page();
-	rootpage = make_leaf();
+	rootpage = make_leaf(0,0);
 	rootpage->leafp.records[0].key = key;
 	strcpy(rootpage->leafp.records[0].value,pointer->value);
 	rootpage->leafp.pheader.numOfKeys++;
@@ -38,7 +38,7 @@ node * start_new_tree(int key, Records* pointer)
 	return rootpage;
 }
 
-node * insert_into_leaf(node * leaf, int key, Records* pointer,pagenum_t offset)
+node * insert_into_leaf(node * leaf, dbint key, Records* pointer,pagenum_t offset)
 {
 	int i, insertion_point;
 
@@ -60,17 +60,18 @@ node * insert_into_leaf(node * leaf, int key, Records* pointer,pagenum_t offset)
 
 }
 
-node * insert_into_leaf_after_splitting(node * leaf, int key, Records* pointer, pagenum_t old_offset)
+node * insert_into_leaf_after_splitting(node * leaf, dbint key, Records* pointer, pagenum_t old_offset)
 {
 	node * new_leaf, *forfree;
 	Records* temp_records;
-	int insertion_index = 0, split, new_key, i, j;
+	int insertion_index = 0, split, i, j,k;
+	dbint new_key;
 	pagenum_t new_offset;
 
-	new_leaf = make_leaf();
+	new_leaf = make_leaf(leaf->leafp.pheader.parent_page,0);
 
-	temp_records = (Records*)malloc(sizeof(Records) * (LBRFACTOR + 1));
-	while(insertion_index < LBRFACTOR && leaf->leafp.records[insertion_index].key < key)
+	temp_records = (Records*)malloc(sizeof(Records) * LBRFACTOR );
+	while(insertion_index < LBRFACTOR - 1 && leaf->leafp.records[insertion_index].key < key)
 		insertion_index++;
 
 	for(i = 0 , j = 0 ; i < leaf->leafp.pheader.numOfKeys ;i++,j++)
@@ -82,23 +83,39 @@ node * insert_into_leaf_after_splitting(node * leaf, int key, Records* pointer, 
 	}
 
 	temp_records[insertion_index].key = key;
-	strcpy(temp_records[insertion_index].value, leaf->leafp.records[insertion_index].value);
+	strcpy(temp_records[insertion_index].value, pointer->value);
 
 	leaf->leafp.pheader.numOfKeys = 0;
 	split = CUT(LBRFACTOR);
 
-	for(i = 0 ; i <= split ; i++)
+	for(i = 0 ; i < split ; i++)
 	{
 		leaf->leafp.records[i].key = temp_records[i].key;
 		strcpy(leaf->leafp.records[i].value, temp_records[i].value);
 		leaf->leafp.pheader.numOfKeys++;
 	}
-	for(i = split + 1,j = 0 ; i <= LBRFACTOR ; i++ , j++)
+
+	/*
+	for(k = leaf->leafp.pheader.numOfKeys ; k < LBRFACTOR ; k++)
+	{
+		leaf->leafp.records[k].key = 0;
+		leaf->leafp.records[k].value[0] = '\0';
+	}
+	*/
+	for(i = split ,j = 0 ; i < LBRFACTOR ; i++ , j++)
 	{
 		new_leaf->leafp.records[j].key = temp_records[i].key;
 		strcpy(new_leaf->leafp.records[j].value, temp_records[i].value);
 		new_leaf->leafp.pheader.numOfKeys++;
 	}
+
+	/*
+	for(k = new_leaf->leafp.pheader.numOfKeys ; k < LBRFACTOR ; k++)
+	{
+		new_leaf->leafp.records[k].key = 0;
+		new_leaf->leafp.records[k].value[0] = '\0';
+	}
+	*/
 	free(temp_records);
 
 	new_leaf->leafp.pheader.parent_page = leaf->leafp.pheader.parent_page;
@@ -126,16 +143,18 @@ int get_left_index(node * parent, pagenum_t loffset)
 	return left_index;
 }
 
-node * insert_into_parent(node * left, pagenum_t loffset, int key, node * right, pagenum_t roffset)
+node * insert_into_parent(node * left, pagenum_t loffset, dbint key, node * right, pagenum_t roffset)
 {
 	int left_index;
 	node * parent = (node*)malloc(sizeof(node));
 	node * temp;
+	pagenum_t parent_offset = left->leafp.pheader.parent_page;
 
-	file_read_page(left->leafp.pheader.parent_page,parent);
 
-	if(parent == NULL)
+	if(parent_offset == 0)
 		return insert_into_new_root(left,loffset,key,right,roffset);
+
+	file_read_page(parent_offset,parent);
 
 	left_index = get_left_index(parent, loffset);
 
@@ -150,7 +169,7 @@ node * insert_into_parent(node * left, pagenum_t loffset, int key, node * right,
 	return temp;
 }
 
-node * insert_into_node(node * n, int left_index, int key, node * right, pagenum_t roffset)
+node * insert_into_node(node * n, int left_index, dbint key, node * right, pagenum_t roffset)
 {
 	int i;
 
@@ -168,18 +187,19 @@ node * insert_into_node(node * n, int left_index, int key, node * right, pagenum
 	return rootpage;
 }
 
-node * insert_into_node_after_splitting(node * old_node, pagenum_t old_offset, int left_index, int key, node * right, pagenum_t roffset)
+node * insert_into_node_after_splitting(node * old_node, pagenum_t old_offset, int left_index, dbint key, node * right, pagenum_t roffset)
 {
-	int i,j,split, k_prime;
+	int i,j,k,split;
+	dbint k_prime;
 	node * new_node, * child;
 	pagenum_t zero_offset = old_node->internalp.pheader.other_page_offset;
-	node temp,*forfree;
+	node temp,*forfree,temp2;
 	pagenum_t new_offset;
-	int * temp_keys;
+	dbint * temp_keys;
 	pagenum_t * temp_offsets;
 
-	temp_keys = (int*)malloc(sizeof(int)*IBRFACTOR);
-	temp_offsets = (pagenum_t*)malloc(sizeof(int)*(IBRFACTOR + 1));
+	temp_keys = (dbint*)malloc(sizeof(dbint)*IBRFACTOR);
+	temp_offsets = (pagenum_t*)malloc(sizeof(pagenum_t)*(IBRFACTOR + 1));
 
 	temp_offsets[0] = zero_offset;
 	for(i = 0 , j = 1 ; i < old_node->internalp.pheader.numOfKeys ;i++ , j++)
@@ -199,7 +219,7 @@ node * insert_into_node_after_splitting(node * old_node, pagenum_t old_offset, i
 	temp_keys[left_index + 1] = key;
 
 	split = CUT(IBRFACTOR);
-	new_node = make_node();
+	new_node = make_node(old_node->internalp.pheader.parent_page,0);
 	old_node->internalp.pheader.numOfKeys = 0;
 	for(i = 0 ; i < split ; i++)
 	{
@@ -207,14 +227,27 @@ node * insert_into_node_after_splitting(node * old_node, pagenum_t old_offset, i
 		 old_node->internalp.entities[i].offset = temp_offsets[i + 1];
 		 old_node->internalp.pheader.numOfKeys++;
 	}
+	/*
+	for(k = old_node->internalp.pheader.numOfKeys ; k < IBRFACTOR - 1; i++)
+	{
+		old_node->internalp.entities[k].key = 0;
+		old_node->internalp.entities[k].offset = 0;
+	}*/
 	k_prime = temp_keys[i];
 	new_node->internalp.pheader.other_page_offset = temp_offsets[i + 1];
-	for(++i, j = 0; i < IBRFACTOR ; i++)
+	for(++i, j = 0; i < IBRFACTOR ; i++,j++)
 	{
 		 new_node->internalp.entities[j].key = temp_keys[i];
 		 new_node->internalp.entities[j].offset = temp_offsets[i + 1];
 		 new_node->internalp.pheader.numOfKeys++;
 	}
+	/*
+	for(k = new_node->internalp.pheader.numOfKeys ; k < IBRFACTOR - 1 ; k++)
+	{
+		new_node->internalp.entities[k].key = 0;
+		new_node->internalp.entities[k].offset = 0;
+	}*/
+
 	free(temp_keys);
 	free(temp_offsets);
 	new_node->internalp.pheader.parent_page = old_node->internalp.pheader.parent_page;
@@ -225,6 +258,9 @@ node * insert_into_node_after_splitting(node * old_node, pagenum_t old_offset, i
 	file_read_page(new_node->internalp.pheader.other_page_offset, &temp);
 	temp.internalp.pheader.parent_page = new_offset;
 	file_write_page(new_node->internalp.pheader.other_page_offset, &temp);
+
+	file_read_page(old_node->internalp.pheader.other_page_offset, &temp2);
+	file_read_page(old_node->internalp.entities[1].offset, &temp2);
 
 	for(i = 0 ; i < new_node->internalp.pheader.numOfKeys; i++)
 	{
@@ -239,16 +275,15 @@ node * insert_into_node_after_splitting(node * old_node, pagenum_t old_offset, i
 	return forfree;
 }
 
-node * insert_into_new_root(node * left, pagenum_t loffset, int key, node * right ,pagenum_t roffset)
+node * insert_into_new_root(node * left, pagenum_t loffset, dbint key, node * right ,pagenum_t roffset)
 {
-	node * root = make_node();
+	node * root = make_node(0,0);
 	pagenum_t newROffset;
 
 	root->internalp.entities[0].key = key;
 	root->internalp.pheader.other_page_offset = loffset;
 	root->internalp.entities[0].offset = roffset;
 	root->internalp.pheader.numOfKeys++;
-	root->internalp.pheader.parent_page = 0;
 	
 	newROffset = file_alloc_page();
 	left->internalp.pheader.parent_page = newROffset;
@@ -258,12 +293,11 @@ node * insert_into_new_root(node * left, pagenum_t loffset, int key, node * righ
 	file_write_page(loffset , left);
 	file_write_page(roffset, right);
 
-	free(rootpage);
-	rootpage = root;
-	return root;
+	free(root);
+	return rootpage;
 }
 
-node * dbinsert(node * root, int key, char * value)
+node * dbinsert(node * root, dbint key, char * value)
 {
 	Records* pointer, *forfree;
 	node * leaf;
@@ -272,7 +306,7 @@ node * dbinsert(node * root, int key, char * value)
 	if((forfree = dbfind(root, key,&offset)) != NULL)
 	{
 		free(forfree);
-		return root;
+		return NULL;
 	}
 	pointer = make_records(value);
 
@@ -303,13 +337,16 @@ Records* make_records(char * value)
 	return new_record;
 }
 
-Records * dbfind(node * root, int key, pagenum_t * poffset)
+Records * dbfind(node * root, dbint key, pagenum_t * poffset)
 {
 	int i = 0;
 	node * c = find_leaf(root, key, poffset);
 	Records* ret = (Records*)malloc(sizeof(Records));;
 	if(c == NULL)
+	{
+		free(ret);
 		return NULL;
+	}
 	
 	for(i = 0 ; i < c->leafp.pheader.numOfKeys ; i ++)
 		if(c->leafp.records[i].key == key)
@@ -317,6 +354,7 @@ Records * dbfind(node * root, int key, pagenum_t * poffset)
 	
 	if(i == c->leafp.pheader.numOfKeys)
 	{
+		free(ret);
 		free(c);
 		return NULL;
 	}
@@ -328,21 +366,27 @@ Records * dbfind(node * root, int key, pagenum_t * poffset)
 	}
 }
 
-node * find_leaf(node * root, int key, pagenum_t * poffset)
+node * find_leaf(node * root, dbint key, pagenum_t * poffset)
 {
 	int i = 0;
-	node * c = root;
+	node * c = root; 
 	node * ret = (node*)malloc(sizeof(node));
-	pagenum_t offset;
+	pagenum_t offset = header->headerp.rootp_offset;
+
 
 	if(c == NULL)
 		return c;
 
+	c = (node*)malloc(sizeof(node));
+
+	file_read_page(offset,c);
+
 	while(!c->internalp.pheader.is_leaf)
 	{
+		i = 0;
 		while(i < c->internalp.pheader.numOfKeys)
 		{
-			if(key > c->internalp.entities[i].key)
+			if(key >= c->internalp.entities[i].key)
 				i++;
 			else
 				break;
@@ -358,12 +402,19 @@ node * find_leaf(node * root, int key, pagenum_t * poffset)
 			file_read_page(c->internalp.entities[i - 1].offset,c);
 		}
 	}
+
 	memcpy(ret,c,PAGESIZE);
-	*poffset = offset;
+
+	if(c->internalp.pheader.parent_page != 0)
+		*poffset = offset;
+	else
+		*poffset = header->headerp.rootp_offset;
+
+	free(c);
 	return ret;
 }
 
-node* dbdelete(node * root, int key)
+node* dbdelete(node * root, dbint key)
 {
 	node * key_leaf;
 	Records* key_record;
@@ -377,19 +428,20 @@ node* dbdelete(node * root, int key)
 		root=delete_entry(key_leaf,key,key_record ,poffset);
 		free(key_record);
 		free(key_leaf);
+
+		return root;
 	}
 
-	return root;
+	return NULL;
 }
 
-node * delete_entry(node * n, int key, void * pointer,pagenum_t offset)
+node * delete_entry(node * n, dbint key, void * pointer,pagenum_t offset)
 {
 	node * neighbor,* temp;
 	int neighbor_index;
 	pagenum_t neighbor_offset;
 
 	n = remove_entry_from_node(n,key,pointer,offset);
-	file_write_page(offset,n);
 
 	if(n->internalp.pheader.parent_page == 0)
 		return adjust_root(n);
@@ -399,8 +451,8 @@ node * delete_entry(node * n, int key, void * pointer,pagenum_t offset)
 		return rootpage;
 	
 	neighbor_index = get_neighbor_index(n, offset,&neighbor_offset);
-	temp = coalesce_nodes(n,offset,neighbor_offset, neighbor_index);
-	
+	temp = coalesce_nodes(n ,offset,neighbor_offset ,neighbor_index);
+
 	return rootpage;
 }
 
@@ -411,54 +463,78 @@ int get_neighbor_index(node * n,pagenum_t offset, pagenum_t * neighbor_offset)
 	
 	file_read_page(n->internalp.pheader.parent_page,&temp);
 	
-	if(n->internalp.pheader.other_page_offset == offset)
+	if(temp.internalp.pheader.other_page_offset == offset)
+	{
+		*neighbor_offset = -1;
 		return -2;
+	}
 
-	for(i = 0 ; i <= temp.internalp.pheader.numOfKeys ; i++)
-		if(n->internalp.entities[i].offset == offset)
+	for(i = 0 ; i < temp.internalp.pheader.numOfKeys ; i++)
+		if(temp.internalp.entities[i].offset == offset)
 			break;	
 
 		if(i == 0)
-			*neighbor_offset = n->internalp.pheader.other_page_offset;
+			*neighbor_offset = temp.internalp.pheader.other_page_offset;
 		else
-			*neighbor_offset = n->internalp.entities[i - 1].offset;
+			*neighbor_offset = temp.internalp.entities[i - 1].offset;
 
 	return i - 1;
 }
 
-node * adjust_root(node * root)
+node * adjust_root(node * n)
 {
-	node * new_root;
+	node * new_root = (node*)malloc(sizeof(node));
+	node * root = rootpage;
 	pagenum_t newRoffset;
 
-	if(root->leafp.pheader.numOfKeys > 0)
+	if(root->leafp.pheader.numOfKeys > 1)
 		return root;
-	
+
 	if(!root->leafp.pheader.is_leaf)
 	{
 		newRoffset = root->internalp.pheader.other_page_offset;
-		file_read_page(newRoffset, new_root);
-		rootpage = new_root;
-		chgheadroff(newRoffset);
-		new_root->internalp.pheader.parent_page = 0;
-		file_write_page(newRoffset, new_root);
+		if(newRoffset == 0)
+		{
+			file_free_page(header->headerp.rootp_offset);
+			header->headerp.rootp_offset = 0;
+			file_write_page(0,header);
+			free(new_root);
+			new_root = NULL;
+			free(rootpage);
+			rootpage = new_root;
+		}
+		else
+		{
+			if(root->internalp.entities[0].offset == 0)
+			{
+				file_free_page(header->headerp.rootp_offset);
+				file_read_page(newRoffset, new_root);		
+				rootpage = new_root;
+				chgheadroff(newRoffset);
+				new_root->internalp.pheader.parent_page = 0;
+				file_write_page(newRoffset, new_root);
+			}
+		}
 	}
 	else
 	{
+		file_free_page(header->headerp.rootp_offset);
+		header->headerp.rootp_offset = 0;
+		file_write_page(0,header);
+		free(new_root);
 		new_root = NULL;
 		free(rootpage);
 		rootpage= new_root;
-		chgheadroff(0);
 	}
 	return new_root;
 }
 
-node * remove_entry_from_node(node * n, int key, node * pointer,pagenum_t offset)
+node * remove_entry_from_node(node * n, dbint key, void * pointer,pagenum_t offset)
 {
 	int i, num_pointers;
 
 	i = 0;
-	if(n->leafp.pheader.is_leaf == 1)
+	if(n->leafp.pheader.is_leaf)
 	{
 		while(n->leafp.records[i].key != key)
 			i++;
@@ -467,7 +543,7 @@ node * remove_entry_from_node(node * n, int key, node * pointer,pagenum_t offset
 			n->leafp.records[i - 1].key = n->leafp.records[i].key;
 			strcpy(n->leafp.records[i - 1].value,n->leafp.records[i].value);
 		}
-		while(i < LBRFACTOR)
+		while(i < LBRFACTOR - 1)
 		{
 			n->leafp.records[i].key = 0;
 			n->leafp.records[i].value[0] ='\0';
@@ -478,10 +554,13 @@ node * remove_entry_from_node(node * n, int key, node * pointer,pagenum_t offset
 	{
 		while(n->internalp.entities[i].key != key)
 			i++;
-		for(++i; i < n->internalp.pheader.numOfKeys;i++)
+		if(i == 0)
+			n->internalp.pheader.other_page_offset = n->internalp.entities[0].offset;
+
+		for(++i; i < n->internalp.pheader.numOfKeys - 1;i++)
 		{
-			n->internalp.entities[i - 1].key = n->internalp.entities[i].key;
-			n->internalp.entities[i - 1].offset = n->internalp.entities[i].offset;
+				n->internalp.entities[i - 1].key = n->internalp.entities[i].key;
+				n->internalp.entities[i - 1].offset = n->internalp.entities[i].offset;
 		}
 		while(i < IBRFACTOR-1)
 		{
@@ -491,7 +570,6 @@ node * remove_entry_from_node(node * n, int key, node * pointer,pagenum_t offset
 		}
 	}
 	n->internalp.pheader.numOfKeys--;
-
 	file_write_page(offset, n);
 
 	return n;
@@ -500,12 +578,18 @@ node * remove_entry_from_node(node * n, int key, node * pointer,pagenum_t offset
 node * coalesce_nodes(node * n, pagenum_t curoffset, pagenum_t noffset, int n_index)
 {
 	int i,j;
+
+	pagenum_t temp_off,poffset;
 	node *parent = (node*)malloc(sizeof(node));
-	
+	node * forfree;
+	node temp;
+
 	file_read_page(n->internalp.pheader.parent_page, parent);
+	poffset = n->internalp.pheader.parent_page;
+
+	file_free_page(curoffset);
 	if(parent->internalp.pheader.numOfKeys > 1)
 	{
-		file_free_page(curoffset);
 		if(n_index == -2)
 		{
 			parent->internalp.pheader.numOfKeys--;
@@ -529,11 +613,70 @@ node * coalesce_nodes(node * n, pagenum_t curoffset, pagenum_t noffset, int n_in
 			parent->internalp.entities[i].key = 0;
 			parent->internalp.entities[i].offset = 0 ;
 		}
+
+		file_write_page(poffset, parent);
 		free(parent);
 		return rootpage;
 	}
-	else
+
+	if(parent->internalp.pheader.numOfKeys == 1 && parent->internalp.entities[0].offset == 0)
+	{
+		//딜리트 재귀 호출 디버깅!!
 		rootpage = delete_entry(parent,parent->internalp.entities[0].key,n,n->internalp.pheader.parent_page);
+		file_write_page(poffset, parent);
 		free(parent);
 		return rootpage;
+	}
+	
+
+	if(n_index == -2)
+	{
+		temp_off = parent->internalp.pheader.other_page_offset = parent->internalp.entities[0].offset;
+		parent->internalp.entities[0].offset = 0;
+
+		file_read_page(temp_off, &temp);
+		if(temp.internalp.pheader.is_leaf == 1)
+		{
+			if(temp.leafp.pheader.numOfKeys != 1)
+				parent->internalp.entities[0].key = temp.leafp.records[temp.leafp.pheader.numOfKeys - 1].key + 1;
+		}
+		else
+		{
+			if(temp.leafp.pheader.numOfKeys != 1)
+			{
+				parent->internalp.entities[0].key = lowestkey(curoffset,&forfree);
+				free(forfree);
+			}
+		}
+		file_write_page(poffset, parent);
+		free(parent);
+		return rootpage;
+	}
+
+	else if(n_index == -1)
+	{
+		parent->internalp.entities[0].offset = 0;
+		
+		file_write_page(poffset, parent);
+		free(parent);
+		return rootpage;
+	}
+}
+
+pagenum_t lowestkey(pagenum_t poffset, node ** pforfree)
+{
+	
+	node * c= (node*)malloc(sizeof(node)); 
+	pagenum_t offset = poffset;
+
+	file_read_page(offset, c);
+
+	while(!c->internalp.pheader.is_leaf)
+	{
+		offset = c->internalp.entities[c->internalp.pheader.numOfKeys - 1].offset;
+		file_read_page(offset,c);
+	}
+	*pforfree = c;
+		
+	return c->leafp.records[c->leafp.pheader.numOfKeys - 1].key;
 }

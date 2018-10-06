@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include "defines.h"
 #include "globals.h"
 #include "DiskManager.h"
@@ -30,6 +31,7 @@ int chgheadroff(pagenum_t rootpnum)
 pagenum_t file_alloc_page()
 {
 	char t = '\0';
+	int size;
 
 	if(header->headerp.freep_offset== 0)
 	{
@@ -37,7 +39,10 @@ pagenum_t file_alloc_page()
 		fwrite(&t,1,PAGESIZE,default_file);
 		header->headerp.numOfPage=++totalp;
 		file_write_page(0,header);
-		currentp=totalp;
+		currentp=totalp - 1;
+
+		fseek(default_file,0,SEEK_END);
+		size = ftell(default_file);	
 
 		return currentp;
 	}
@@ -59,12 +64,13 @@ void file_free_page(pagenum_t pagenum)
 	tempfree.freep.next_freep = header->headerp.freep_offset;
 	header->headerp.freep_offset = pagenum;
 	file_write_page(0,header);
-	file_write_page(pagenum,&tempfree);
+	fseek(default_file, pagenum*PAGESIZE, SEEK_SET);
+	fwrite(&tempfree,PAGESIZE,1,default_file);
 }
 
 void file_read_page(pagenum_t pagenum, Page* dest)
 {
-	if(pagenum > totalp)
+	if(pagenum - 1> totalp)
 		exit(1);
 
 	fseek(default_file, pagenum*PAGESIZE, SEEK_SET);
@@ -74,12 +80,13 @@ void file_read_page(pagenum_t pagenum, Page* dest)
 void file_write_page(pagenum_t pagenum, const Page* src)
 {
 	Page * freepp;
-	if(pagenum > totalp)
+	if(pagenum - 1> totalp)
 		exit(1);
 
-	if(pagenum == header->headerp.freep_offset)
+	if(pagenum != 0 && pagenum == header->headerp.freep_offset)
 	{
 		freepp = (Page*)malloc(sizeof(Page));		
+		file_read_page(header->headerp.freep_offset,freepp);
 		header->headerp.freep_offset = freepp->freep.next_freep;
 		file_write_page(0,header);
 		free(freepp);
@@ -87,4 +94,7 @@ void file_write_page(pagenum_t pagenum, const Page* src)
 
 	fseek(default_file, pagenum*PAGESIZE, SEEK_SET);
 	fwrite(src,PAGESIZE,1,default_file);
+
+	if(pagenum != 0 && pagenum == header->headerp.rootp_offset)
+		file_read_page(pagenum, rootpage);
 }
