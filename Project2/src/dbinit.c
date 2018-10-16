@@ -32,7 +32,10 @@ int headerInit()
 void dbend()
 {
 	if(header != NULL);
+	{
+		file_write_page(0,header);
 		free(header);
+	}
 	if(rootpage != NULL);
 		free(rootpage);
 	if(default_file != NULL)

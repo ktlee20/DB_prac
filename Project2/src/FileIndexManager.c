@@ -10,6 +10,7 @@
 
 int open_db(char * pathname)
 {
+	globalInit();
 	default_file = fopen(pathname,"r+b");
 	if(default_file == NULL)
 	{
@@ -22,8 +23,6 @@ int open_db(char * pathname)
 		headerInit();
 		return 0;
 	}
-	header = (Page*)malloc(sizeof(Page));
-	file_read_page(0,header);
 	headerInit();
 
 	if(header->headerp.rootp_offset != 0)
@@ -46,9 +45,15 @@ char * find(dbint key)
 	Records * record = dbfind(rootpage, key, &leaf_offset);
 	char * value = (char*)malloc(sizeof(char) * VALUESIZE);
 
-	printf("%ld ",key);
-	strcpy(value, record->value);
-
+	if(record != NULL)
+	{
+		strcpy(value, record->value);
+	}		
+	else
+	{
+		free(value);
+		value = NULL;
+	}
 	free(record);
 
 	return value;

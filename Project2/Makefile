@@ -1,4 +1,3 @@
-
 CC=gcc
 AR=ar
 
@@ -10,8 +9,9 @@ LIBS=lib/
 TARGET_SRC:=$(SRCDIR)stress.c $(SRCDIR)DiskMagager.c $(SRCDIR)FileIndexManager.c $(SRCDIR)dbbpt.c $(SRCDIR)dbinit.c 
 TARGET_OBJ:=$(SRCDIR)stress.o $(SRCDIR)DiskManager.o $(SRCDIR)FileIndexManager.o $(SRCDIR)dbbpt.o $(SRCDIR)dbinit.o
 
-CFLAGS+= -g -I $(INC)
-OBJFLAGS+= -g -c -I $(INC)
+CFLAGS+= -I $(INC)
+OBJFLAGS+= -c -I $(INC)
+DFLAGS += -fPIC -c -I $(INC)
 
 TARGET:=stress
 

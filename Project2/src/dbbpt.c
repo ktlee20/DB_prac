@@ -431,7 +431,6 @@ node* dbdelete(node * root, dbint key)
 
 		return root;
 	}
-
 	return NULL;
 }
 
@@ -483,7 +482,6 @@ int get_neighbor_index(node * n,pagenum_t offset, pagenum_t * neighbor_offset)
 
 node * adjust_root(node * n)
 {
-	node * new_root = (node*)malloc(sizeof(node));
 	node * root = rootpage;
 	pagenum_t newRoffset;
 
@@ -492,41 +490,25 @@ node * adjust_root(node * n)
 
 	if(!root->leafp.pheader.is_leaf)
 	{
-		newRoffset = root->internalp.pheader.other_page_offset;
-		if(newRoffset == 0)
-		{
-			file_free_page(header->headerp.rootp_offset);
-			header->headerp.rootp_offset = 0;
-			file_write_page(0,header);
-			free(new_root);
-			new_root = NULL;
-			free(rootpage);
-			rootpage = new_root;
-		}
-		else
-		{
-			if(root->internalp.entities[0].offset == 0)
-			{
-				file_free_page(header->headerp.rootp_offset);
-				file_read_page(newRoffset, new_root);		
-				rootpage = new_root;
-				chgheadroff(newRoffset);
-				new_root->internalp.pheader.parent_page = 0;
-				file_write_page(newRoffset, new_root);
-			}
-		}
+		if((root->internalp.pheader.other_page_offset != 0) || (root->internalp.entities[0].offset != 0))
+			return root;
+
+		file_free_page(header->headerp.rootp_offset);
+		free(rootpage);
+		rootpage = NULL;
+		header->headerp.rootp_offset = 0;
+		file_write_page(0,header);
 	}
 	else
 	{
 		file_free_page(header->headerp.rootp_offset);
 		header->headerp.rootp_offset = 0;
 		file_write_page(0,header);
-		free(new_root);
-		new_root = NULL;
 		free(rootpage);
-		rootpage= new_root;
+		rootpage= NULL;
 	}
-	return new_root;
+
+	return rootpage;
 }
 
 node * remove_entry_from_node(node * n, dbint key, void * pointer,pagenum_t offset)
@@ -552,36 +534,21 @@ node * remove_entry_from_node(node * n, dbint key, void * pointer,pagenum_t offs
 	}
 	else
 	{
-		while(n->internalp.entities[i].key != key)
-			i++;
-		if(i == 0)
-			n->internalp.pheader.other_page_offset = n->internalp.entities[0].offset;
+		n->internalp.pheader.other_page_offset = 0;
+		n->internalp.entities[0].offset = 0;
 
-		for(++i; i < n->internalp.pheader.numOfKeys - 1;i++)
-		{
-				n->internalp.entities[i - 1].key = n->internalp.entities[i].key;
-				n->internalp.entities[i - 1].offset = n->internalp.entities[i].offset;
-		}
-		while(i < IBRFACTOR-1)
-		{
-			n->internalp.entities[i].key = 0;
-			n->internalp.entities[i].offset = 0;
-			i++;
-		}
 	}
 	n->internalp.pheader.numOfKeys--;
 	file_write_page(offset, n);
-
 	return n;
 }
 
 node * coalesce_nodes(node * n, pagenum_t curoffset, pagenum_t noffset, int n_index)
 {
 	int i,j;
-
 	pagenum_t temp_off,poffset;
 	node *parent = (node*)malloc(sizeof(node));
-	node * forfree;
+	node *forfree;
 	node temp;
 
 	file_read_page(n->internalp.pheader.parent_page, parent);
@@ -619,64 +586,28 @@ node * coalesce_nodes(node * n, pagenum_t curoffset, pagenum_t noffset, int n_in
 		return rootpage;
 	}
 
-	if(parent->internalp.pheader.numOfKeys == 1 && parent->internalp.entities[0].offset == 0)
+	if(parent->internalp.pheader.numOfKeys == 1 && (parent->internalp.entities[0].offset == 0 || parent->internalp.pheader.other_page_offset == 0))
 	{
-		//딜리트 재귀 호출 디버깅!!
 		rootpage = delete_entry(parent,parent->internalp.entities[0].key,n,n->internalp.pheader.parent_page);
-		file_write_page(poffset, parent);
 		free(parent);
-		return rootpage;
+
+		return rootpage; 
 	}
 	
-
 	if(n_index == -2)
 	{
-		temp_off = parent->internalp.pheader.other_page_offset = parent->internalp.entities[0].offset;
-		parent->internalp.entities[0].offset = 0;
+		temp_off = parent->internalp.pheader.other_page_offset;
+		parent->internalp.pheader.other_page_offset = 0;
 
-		file_read_page(temp_off, &temp);
-		if(temp.internalp.pheader.is_leaf == 1)
-		{
-			if(temp.leafp.pheader.numOfKeys != 1)
-				parent->internalp.entities[0].key = temp.leafp.records[temp.leafp.pheader.numOfKeys - 1].key + 1;
-		}
-		else
-		{
-			if(temp.leafp.pheader.numOfKeys != 1)
-			{
-				parent->internalp.entities[0].key = lowestkey(curoffset,&forfree);
-				free(forfree);
-			}
-		}
 		file_write_page(poffset, parent);
 		free(parent);
 		return rootpage;
 	}
-
 	else if(n_index == -1)
 	{
 		parent->internalp.entities[0].offset = 0;
-		
 		file_write_page(poffset, parent);
 		free(parent);
 		return rootpage;
 	}
-}
-
-pagenum_t lowestkey(pagenum_t poffset, node ** pforfree)
-{
-	
-	node * c= (node*)malloc(sizeof(node)); 
-	pagenum_t offset = poffset;
-
-	file_read_page(offset, c);
-
-	while(!c->internalp.pheader.is_leaf)
-	{
-		offset = c->internalp.entities[c->internalp.pheader.numOfKeys - 1].offset;
-		file_read_page(offset,c);
-	}
-	*pforfree = c;
-		
-	return c->leafp.records[c->leafp.pheader.numOfKeys - 1].key;
 }
