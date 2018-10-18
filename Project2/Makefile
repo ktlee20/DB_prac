@@ -6,12 +6,12 @@ INC=include/
 LIBS=lib/
 
 
-TARGET_SRC:=$(SRCDIR)stress.c $(SRCDIR)DiskMagager.c $(SRCDIR)FileIndexManager.c $(SRCDIR)dbbpt.c $(SRCDIR)dbinit.c 
+TARGET_SRC:=$(SRCDIR)stress.c $(SRCDIR)DiskManager.c $(SRCDIR)FileIndexManager.c $(SRCDIR)dbbpt.c $(SRCDIR)dbinit.c 
 TARGET_OBJ:=$(SRCDIR)stress.o $(SRCDIR)DiskManager.o $(SRCDIR)FileIndexManager.o $(SRCDIR)dbbpt.o $(SRCDIR)dbinit.o
+TARGET_OBJ_FOR_LIB:=$(TARGET_SRC:.c=.o)
 
-CFLAGS+= -I $(INC)
-OBJFLAGS+= -c -I $(INC)
-DFLAGS += -fPIC -c -I $(INC)
+CFLAGS+= -fPIC -I $(INC)
+OBJFLAGS+= -fPIC -c -I $(INC)
 
 TARGET:=stress
 
@@ -23,10 +23,14 @@ $(TARGET) : $(TARGET_OBJ)
 	$(CC) $(OBJFLAGS) $(SRCDIR)dbbpt.c -o $(SRCDIR)dbbpt.o 
 	$(CC) $(OBJFLAGS) $(SRCDIR)dbinit.c -o $(SRCDIR)dbinit.o 
 	make static_library
+	make library
 	$(CC) $(CFLAGS) $(TARGET_OBJ) -o $(TARGET)
 
 static_library:
 	ar cr $(LIBS)libbpt.a $(TARGET_OBJ)
+
+library:
+	gcc -shared -Wl,-soname,libbpt.so -o $(LIBS)libbpt.so $(TARGET_OBJ_FOR_LIB)
 
 clean:
 	rm $(TARGET) $(TARGET_OBJ)
