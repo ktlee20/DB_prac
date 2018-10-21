@@ -17,19 +17,19 @@ int main(int argc, char * argv[])
 
 	open_db("default.db");
 
-	for(i = 0 ; i < 100000; i++)
+	for(i = 0 ; i < 10000000; i++)
 		insert(i, "lee");
-	for(i = 0 ; i < 100000; i++)
+	for(i = 0 ; i < 10000000; i++)
 		find(i);
-	for(i = 0 ; i < 100000; i++)
+	for(i = 0 ; i < 10000000; i++)
 		delete(i);
 
-	for(i = 0 ; i < 100000 ; i++)
+	for(i = 0 ; i < 10000000 ; i++)
 		insert(i,"lee");
 
-	for(i = 1 ; i < 100000 ; i+=7)
+	for(i = 1 ; i < 10000000 ; i+=7)
 		delete(i);
-	for(i = 0 ; i < 100000 ; i++)
+	for(i = 0 ; i < 10000000 ; i++)
 	{
 		if((temp=find(i)) != NULL)
 		{

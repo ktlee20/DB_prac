@@ -483,21 +483,33 @@ int get_neighbor_index(node * n,pagenum_t offset, pagenum_t * neighbor_offset)
 node * adjust_root(node * n)
 {
 	node * root = rootpage;
-	pagenum_t newRoffset;
+	pagenum_t newRoffset ,oldRoffset;
 
 	if(root->leafp.pheader.numOfKeys > 1)
 		return root;
 
 	if(!root->leafp.pheader.is_leaf)
 	{
-		if((root->internalp.pheader.other_page_offset != 0) || (root->internalp.entities[0].offset != 0))
-			return root;
+		if((root->internalp.pheader.other_page_offset == 0) && (root->internalp.entities[0].offset == 0))
+		{
+			file_free_page(header->headerp.rootp_offset);
+			free(rootpage);
+			rootpage = NULL;
+			chgheadroff(0);
 
-		file_free_page(header->headerp.rootp_offset);
-		free(rootpage);
-		rootpage = NULL;
-		header->headerp.rootp_offset = 0;
-		file_write_page(0,header);
+			return NULL;
+		}			
+
+		if((root->internalp.pheader.other_page_offset == 0) || (root->internalp.entities[0].offset == 0))
+		{
+			newRoffset = (root->internalp.pheader.other_page_offset == 0) ? root->internalp.entities[0].offset : root->internalp.pheader.other_page_offset;
+			oldRoffset = header->headerp.rootp_offset;
+			chgheadroff(newRoffset);		
+			file_free_page(oldRoffset);
+			file_read_page(newRoffset, rootpage);
+
+			return root;
+		}		
 	}
 	else
 	{
