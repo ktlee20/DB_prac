@@ -9,6 +9,7 @@
 void globalInit()
 {
 	default_file = NULL;
+	default_fd = 0;
 	totalp = 0;
 	currentp = 0;
 	header = NULL;

@@ -20,10 +20,12 @@ int open_db(char * pathname)
 		if(default_file == NULL)
 			return -1;
 
+		default_fd = fileno(default_file);
 		headerInit();
 		return 0;
 	}
 	headerInit();
+	default_fd = fileno(default_file);
 
 	if(header->headerp.rootp_offset != 0)
 		file_read_page(header->headerp.rootp_offset,rootpage);

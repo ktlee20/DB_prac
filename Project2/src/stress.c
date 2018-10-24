@@ -5,6 +5,7 @@
 #include "FileIndexManager.h"
 
 FILE * default_file;
+int default_fd;
 Page * header;
 Page * rootpage;
 pagenum_t totalp;

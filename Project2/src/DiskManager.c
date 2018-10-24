@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "defines.h"
 #include "globals.h"
 #include "DiskManager.h"
@@ -15,6 +16,7 @@ int make_new_header()
 
 	fseek(default_file,0,SEEK_SET);
 	fwrite(newHeader,PAGESIZE,1,default_file);
+	fsync(default_fd);
 	free(newHeader);
 
 	return 0;
@@ -37,6 +39,7 @@ pagenum_t file_alloc_page()
 	{
 		fseek(default_file,0,SEEK_END);
 		fwrite(&t,1,PAGESIZE,default_file);
+		fsync(default_fd);
 		header->headerp.numOfPage=++totalp;
 		file_write_page(0,header);
 		currentp=totalp - 1;
@@ -66,6 +69,7 @@ void file_free_page(pagenum_t pagenum)
 	file_write_page(0,header);
 	fseek(default_file, pagenum*PAGESIZE, SEEK_SET);
 	fwrite(&tempfree,PAGESIZE,1,default_file);
+	fsync(default_fd);
 }
 
 void file_read_page(pagenum_t pagenum, Page* dest)
@@ -94,6 +98,7 @@ void file_write_page(pagenum_t pagenum, const Page* src)
 
 	fseek(default_file, pagenum*PAGESIZE, SEEK_SET);
 	fwrite(src,PAGESIZE,1,default_file);
+	fsync(default_fd);
 
 	if(pagenum != 0 && pagenum == header->headerp.rootp_offset)
 		file_read_page(pagenum, rootpage);
