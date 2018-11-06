@@ -246,6 +246,7 @@ void buf_write_page(pagenum_t offset, Page * src ,int table_id)
 	if(tempNode != NULL)
 	{
 		memcpy(&tempNode->frame, src, PAGESIZE);
+		tempNode->is_dirty = 1;
 		buf_lru_set(tempNode,table_id);	
 	}
 	else
