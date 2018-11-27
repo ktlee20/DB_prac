@@ -102,7 +102,7 @@ typedef struct _opt_min_max_
 typedef struct _optimal_info_
 {
 	dbint num;
-	MinMax mm[MAXVALNUM];	
+	MinMax mm[MAXVALNUM + 1];	
 } OptInfo;
 
 //In-memory struct

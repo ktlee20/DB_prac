@@ -6,11 +6,11 @@
 #include "DiskManager.h"
 #include "globals.h"
 
-Bufstrt * buffer[MAXTABLE];
-Bufstrt * bufferlast[MAXTABLE];
+Bufstrt * buffer[MAXTABLE+1];
+Bufstrt * bufferlast[MAXTABLE+1];
 int bufsize;
-int curPos[MAXTABLE];
-int numOfCol[MAXTABLE];
+int curPos[MAXTABLE+1];
+int numOfCol[MAXTABLE+1];
 
 Bufstrt * makeBufNode()
 {

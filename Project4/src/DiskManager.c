@@ -25,7 +25,7 @@ int make_new_header(int i, int num_col)
 
 int chgheadroff(pagenum_t rootpnum,int i)
 {
-	header[i]->headerp.rootp_offset = rootpnum;
+	header[i]->headerp.rootp_offset = rootpnum * PAGESIZE;
 	file_write_page(0,header[i],i);
 
 	return 0;
@@ -34,7 +34,6 @@ int chgheadroff(pagenum_t rootpnum,int i)
 pagenum_t file_alloc_page(int i)
 {
 	char t = '\0';
-	int size;
 	Page * freepp;
 
 	if(header[i]->headerp.freep_offset== 0)
@@ -47,15 +46,14 @@ pagenum_t file_alloc_page(int i)
 		currentp[i]=totalp[i] - 1;
 
 		fseek(default_file[i],0,SEEK_END);
-		size = ftell(default_file[i]);	
 
 		return currentp[i];
 	}
 	else
 	{
-		currentp[i] = header[i]->headerp.freep_offset;
+		currentp[i] = header[i]->headerp.freep_offset / PAGESIZE;
 		freepp = (Page*)malloc(sizeof(Page));		
-		file_read_page(header[i]->headerp.freep_offset,freepp,i);
+		file_read_page(currentp[i],freepp,i);
 		header[i]->headerp.freep_offset = freepp->freep.next_freep;
 		file_write_page(0,header[i],i);
 		free(freepp);
@@ -75,7 +73,7 @@ void file_free_page(pagenum_t pagenum,int i)
 	tempfree.freep.next_freep = header[i]->headerp.freep_offset;	
 
 
-	header[i]->headerp.freep_offset = pagenum;
+	header[i]->headerp.freep_offset = pagenum * PAGESIZE;
 	file_write_page(0,header[i],i);
 	fseek(default_file[i], pagenum*PAGESIZE, SEEK_SET);
 	fwrite(&tempfree,PAGESIZE,1,default_file[i]);
@@ -101,6 +99,6 @@ void file_write_page(pagenum_t pagenum, const Page* src, int i)
 	fwrite(src,PAGESIZE,1,default_file[i]);
 	//fsync(default_fd[i]);
 
-	if(pagenum != 0 && pagenum == header[i]->headerp.rootp_offset)
+	if(pagenum != 0 &&( pagenum == header[i]->headerp.rootp_offset / PAGESIZE))
 		file_read_page(pagenum, rootpage[i],i);
 }

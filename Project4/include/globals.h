@@ -11,15 +11,15 @@ extern pagenum_t * totalp;
 extern pagenum_t * currentp;
 
 //BufferManager.c
-extern Bufstrt * buffer[MAXTABLE];
-extern Bufstrt * bufferlast[MAXTABLE];
+extern Bufstrt * buffer[MAXTABLE+1];
+extern Bufstrt * bufferlast[MAXTABLE+1];
 extern int bufsize;
-extern int curPos[MAXTABLE];
-extern int numOfCol[MAXTABLE];
+extern int curPos[MAXTABLE+1];
+extern int numOfCol[MAXTABLE+1];
 
 //Optimizer.c
-extern OptInfo * oinfo[MAXTABLE];
-extern JTable * memory_key[MAXTABLE];
+extern OptInfo * oinfo[MAXTABLE+1];
+extern JTable * memory_key[MAXTABLE+1];
 
 extern int printJTable;
 

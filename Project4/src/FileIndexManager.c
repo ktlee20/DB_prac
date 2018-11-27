@@ -1,4 +1,6 @@
+#include <pthread.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include "defines.h"
@@ -17,14 +19,27 @@ int init_db(int num_buf)
 	if(num_buf < 2)
 		num_buf = 2;
 
-	default_file = (FILE**)malloc(sizeof(FILE*) * MAXTABLE);
-	default_fd = (int*)malloc(sizeof(int) * MAXTABLE);
-	header = (Page**)malloc(sizeof(Page*) * MAXTABLE);
-	rootpage = (Page**)malloc(sizeof(Page*) * MAXTABLE);
-	totalp = (pagenum_t*)malloc(sizeof(pagenum_t) * MAXTABLE);
-	currentp = (pagenum_t*)malloc(sizeof(pagenum_t) * MAXTABLE);
+	default_file = (FILE**)malloc(sizeof(FILE*) *(MAXTABLE+1));
+	default_fd = (int*)malloc(sizeof(int) * (MAXTABLE+1));
+	header = (Page**)malloc(sizeof(Page*) * (MAXTABLE+1));
+	rootpage = (Page**)malloc(sizeof(Page*) * (MAXTABLE+1));
+	totalp = (pagenum_t*)malloc(sizeof(pagenum_t) * (MAXTABLE+1));
+	currentp = (pagenum_t*)malloc(sizeof(pagenum_t) * (MAXTABLE+1));
 
-	for(i = 0 ; i < MAXTABLE ; i++)
+	default_file[0] = (FILE*)0x01;
+	default_fd[0] = 100000;
+	totalp[0] = -1;
+	currentp[0] = -1;
+	header[0] = (Page*)0x01;
+	rootpage[0] = (Page*)0x01;
+	oinfo[0] = (OptInfo*)0x01;
+	memory_key[0] = (JTable*)0x01;
+
+	buffer[0] = (Bufstrt*)0x01;
+	bufferlast[0] = (Bufstrt*)0x01;
+	curPos[0] = -1;	
+
+	for(i = 1 ; i < (MAXTABLE + 1) ; i++)
 	{
 		globalInit(i);
 		newBuf(num_buf, i);
@@ -64,9 +79,6 @@ int open_table(char * pathname, int num_column)
 	}
 	headerInit(num,num_column);
 
-	if(header[num]->headerp.rootp_offset != 0)
-		file_read_page(header[num]->headerp.rootp_offset,rootpage[num],num);
-
 	make_stat(num);
 	return num;
 }
@@ -81,7 +93,7 @@ int close_table(int table_id)
 int shutdown_db()
 {
 	int i;
-	for(i = 0 ; i < MAXTABLE ; i++)
+	for(i = 1 ; i <= MAXTABLE ; i++)
 	{
 		if(default_fd[i] != 0)
 			close_table(i);

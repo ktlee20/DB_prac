@@ -51,7 +51,7 @@ int headerInit(int i,int num_col)
 	if(header[i]->headerp.rootp_offset != 0)
 	{
 		rootpage[i] = (Page*)malloc(sizeof(Page));
-		file_read_page(header[i]->headerp.rootp_offset, rootpage[i],i);
+		file_read_page((header[i]->headerp.rootp_offset/PAGESIZE), rootpage[i],i);
 	}
 	return 0;
 }

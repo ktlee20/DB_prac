@@ -4,11 +4,12 @@
 #include "BufferManager.h"
 #include "DiskManager.h"
 #include "defines.h"
+#include "join.h"
 #include "globals.h"
 #include "Optimizer.h"
 
-OptInfo * oinfo[MAXTABLE];
-JTable * memory_key[MAXTABLE];
+OptInfo * oinfo[MAXTABLE+1];
+JTable * memory_key[MAXTABLE+1];
 
 int process_records(int table_id, Records* record)
 {
@@ -19,25 +20,25 @@ int process_records(int table_id, Records* record)
 	if(oinfo[table_id]->num == FAIL)
 	{
 		oinfo[table_id]->num = 1;
-		oinfo[table_id]->mm[0].min = oinfo[table_id]->mm[0].max = record->key;
-		for(i = 1 ; i < col_num  ; i++)
-			oinfo[table_id]->mm[i].min = oinfo[table_id]->mm[i].max = record->values[i-1];
+		oinfo[table_id]->mm[1].min = oinfo[table_id]->mm[1].max = record->key;
+		for(i = 2 ; i <= col_num  ; i++)
+			oinfo[table_id]->mm[i].min = oinfo[table_id]->mm[i].max = record->values[i-2];
 
 		return 0;
 	}	
 	
 	oinfo[table_id]->num++;
-	if(record->key < oinfo[table_id]->mm[0].min)
-		oinfo[table_id]->mm[0].min = record->key;
-	else if(record->key > oinfo[table_id]->mm[0].max)
-		oinfo[table_id]->mm[0].max = record->key;
+	if(record->key < oinfo[table_id]->mm[1].min)
+		oinfo[table_id]->mm[1].min = record->key;
+	else if(record->key > oinfo[table_id]->mm[1].max)
+		oinfo[table_id]->mm[1].max = record->key;
 
-	for(i = 1 ; i < col_num ; i++)
+	for(i = 2 ; i <= col_num ; i++)
 	{
-		if(oinfo[table_id]->mm[i].min > record->values[i - 1])
-			oinfo[table_id]->mm[i].min = record->values[i - 1];
-		else if(oinfo[table_id]->mm[i].max < record->values[i - 1])
-			oinfo[table_id]->mm[i].max = record->values[i - 1];
+		if(oinfo[table_id]->mm[i].min > record->values[i - 2])
+			oinfo[table_id]->mm[i].min = record->values[i - 2];
+		else if(oinfo[table_id]->mm[i].max < record->values[i - 2])
+			oinfo[table_id]->mm[i].max = record->values[i - 2];
 	}
 	
 	return 0;
@@ -61,7 +62,7 @@ int read_table(int table_id, Page * c)
 	offset = c->internalp.pheader.other_page_offset;
 	if(offset != 0)
 	{
-		buf_read_page(offset, temp, table_id);
+		buf_read_page(offset / PAGESIZE, temp, table_id);
 		read_table(table_id, temp);
 	}
 	for(i = 0 ; i < c->internalp.pheader.numOfKeys ; i++)
@@ -69,7 +70,7 @@ int read_table(int table_id, Page * c)
 		offset = c->internalp.entities[i].offset;	
 		if(offset != 0)
 		{
-			buf_read_page(offset, temp, table_id);
+			buf_read_page(offset/PAGESIZE, temp, table_id);
 			read_table(table_id, temp);
 		}
 	}
@@ -84,11 +85,11 @@ int make_stat(int table_id)
 	
 	oinfo[table_id] = (OptInfo*)malloc(sizeof(OptInfo));
 	oinfo[table_id]->num = FAIL;
-	
+
 	for(i = 0 ; i < MAXVALNUM ; i++)
 	{
 		oinfo[table_id]->mm[i].min = FAIL;
-		oinfo[table_id]->mm[i].min = FAIL;
+		oinfo[table_id]->mm[i].max = FAIL;
 	}	
 	read_table(table_id, rootpage[table_id]);
 }
@@ -106,6 +107,9 @@ int inmemory_scanner(int table_id, Page * c)
 		memory_key[table_id]->joinedNum = 1;
 		memory_key[table_id]->tid[0] = table_id;
 		memory_key[table_id]->colSize[0] = numOfCol[table_id];
+		for(i = 1 ; i < MAXTABLE ; i++)
+			memory_key[table_id]->tid[i] = memory_key[table_id]->colSize[i] = 0;		
+
 	}
 	else
 	{
@@ -128,13 +132,15 @@ int inmemory_scanner(int table_id, Page * c)
 
 PNode * makeNode(int t, int c)
 {
+	int i,j;
 	PNode * temp = (PNode*)malloc(sizeof(PNode));
+
 	temp->table_id = t;
 	temp->col = c;
 	temp->right = NULL;
 	temp->left = NULL;
 	temp->parent = NULL;
-
+	
 	return temp;
 }
 
@@ -338,7 +344,6 @@ PNode * make_parsetree(Queue * q,int *t1, int *t2, int * c1, int * c2, int query
 	return ptemp;
 }
 
-
 PNode* sort_selectivity(char ** query, int queryNum)
 {
 	int i,j,b1,b2,k;
@@ -353,7 +358,7 @@ PNode* sort_selectivity(char ** query, int queryNum)
 	c1 = (int*)malloc(sizeof(int) * queryNum);
 	c2 = (int*)malloc(sizeof(int) * queryNum);
 	slt = (double*)malloc(sizeof(double) * queryNum);
-	using = (int*)malloc(sizeof(int) * queryNum);
+	using = (int*)malloc(sizeof(int) * (MAXTABLE+1));
 	q = (Queue*)malloc(sizeof(Queue));
 	q1 = (Queue*)malloc(sizeof(Queue));
 
