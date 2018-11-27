@@ -96,25 +96,29 @@ JTable * joining(PNode * left, PNode * right, JTable * jtleft, JTable * jtright)
 {
 	int i, j, l ,r, num, mark;
 	int lcol , rcol;
+	PNode * parent = left->parent;
 	JTable * newJtleft;	
 	dbint ** tempTable = (dbint**)malloc(sizeof(dbint*));
+	int *rtid = jtright->tid, *ltid = jtleft->tid;
+	int ntid[MAXTABLE];
 
 	newJtleft = (JTable*)malloc(sizeof(JTable));
 	newJtleft->joinedNum = jtleft->joinedNum + jtright->joinedNum;
 	newJtleft->numOfData = 0;
+
 	for(i = 0 ; i < jtleft->joinedNum ; i++)
 	{
 		newJtleft->tid[i] = jtleft->tid[i];	
 		newJtleft->colSize[i] = jtleft->colSize[i];
 		if(left->table_id == jtleft->tid[i])
-			lcol = (i == 0) ? left->col : left->col + jtleft->colSize[i - 1];
+			lcol = (i == 0) ? (left->col - 1) : (left->col + jtleft->colSize[i - 1] - 1);
 	}	
 	for(j = 0 ; j < jtright->joinedNum ; j++)
 	{
 		newJtleft->tid[i + j] = jtright->tid[j];
 		newJtleft->colSize[i + j] = jtright->colSize[j] + newJtleft->colSize[i + j - 1];
 		if(right->table_id == jtright->tid[j])
-			rcol = (j == 0) ? right->col : right->col + jtright->colSize[i - 1];
+			rcol = (j == 0) ? (right->col - 1) : (right->col + jtright->colSize[i - 1] - 1);
 	}
 
 	tempTable[0] = (dbint*)malloc(sizeof(dbint) * newJtleft->colSize[newJtleft->joinedNum - 1]);
@@ -162,6 +166,7 @@ JTable * joining(PNode * left, PNode * right, JTable * jtleft, JTable * jtright)
 			else
 				r = (jtright->numOfData - 1);
 		}
+
 		mark = r;
 		while(jtleft->iArr[l][lcol] == jtright->iArr[r][rcol])
 		{
@@ -172,7 +177,7 @@ JTable * joining(PNode * left, PNode * right, JTable * jtleft, JTable * jtright)
 					for(i = 0 ; i < jtleft->colSize[jtleft->joinedNum - 1] ; i++)
 						tempTable[0][i] = jtleft->iArr[l][i];
 					for(j = 0 ; j < jtright->colSize[jtright->joinedNum - 1] ; j++)
-						tempTable[0][i + j] = jtright->iArr[l][j];
+						tempTable[0][i + j] = jtright->iArr[r][j];
 					newJtleft->numOfData = 1;
 				}
 				else
@@ -183,7 +188,7 @@ JTable * joining(PNode * left, PNode * right, JTable * jtleft, JTable * jtright)
 					for(i = 0 ; i < jtleft->colSize[jtleft->joinedNum - 1] ; i++)
 						tempTable[newJtleft->numOfData - 1][i] = jtleft->iArr[l][i];
 					for(j = 0 ; j < jtright->colSize[jtright->joinedNum - 1] ; j++)
-						tempTable[newJtleft->numOfData - 1][i + j] = jtright->iArr[l][j];
+						tempTable[newJtleft->numOfData - 1][i + j] = jtright->iArr[r][j];
 				}
 				r++;
 				if(r >= jtright->numOfData)
@@ -198,6 +203,7 @@ JTable * joining(PNode * left, PNode * right, JTable * jtleft, JTable * jtright)
 				break;
 			}
 		}
+
 		if(l >= jtleft->numOfData && r >= jtright->numOfData)
 			break;
 		if(l >= jtleft->numOfData)
@@ -238,6 +244,10 @@ JTable * join_table(PNode * tree)
 	PNode * temp = tree, *left, *right;
 	JTable *jtleft,*jtright,*jttemp = NULL;
 	int i,j,t;
+	int oneQuery = 0;	
+
+	if(temp->left->left == NULL)
+		oneQuery = 1;
 
 	while(temp->left != NULL)
 		temp = temp->left;	
@@ -262,16 +272,20 @@ JTable * join_table(PNode * tree)
 	}
 
 	jttemp = joining(left,right, jtleft, jtright);
-	cusFree(jtleft);
+	
+	if(oneQuery != 1)
+		cusFree(jtleft);
 	jtleft = jttemp;
 
-	for(j = 0 ; j < jtleft->numOfData ; j++)
+	if(printJTable)
 	{
-		for(i = 0 ; i < jtleft->colSize[jtleft->joinedNum - 1] ; i++)
-			printf("%ld ",jtleft->iArr[j][i]);
-		printf("\n");
+		for(j = 0 ; j < jtleft->numOfData ; j++)
+		{
+			for(i = 0 ; i < jtleft->colSize[jtleft->joinedNum - 1] ; i++)
+				printf("%ld ",jtleft->iArr[j][i]);
+			printf("\n");
+		}	
 	}	
-	
 	return jtleft;
 }
 
@@ -287,18 +301,15 @@ dbint join(char * str)
 
 	jttemp = join_table(pTree);
 	
-	if(printJTable)
+	for(j = 0 ; j < jttemp->numOfData ; j++)
 	{
-		for(j = 0 ; j < jttemp->numOfData ; j++)
-		{
-			key += jttemp->iArr[j][0];
-			for(i = 0 ; i < jttemp->joinedNum - 1 ; i++)
-				key += jttemp->iArr[j][jttemp->colSize[i]];
-		}
+		key += jttemp->iArr[j][0];
+		for(i = 0 ; i < jttemp->joinedNum - 1 ; i++)
+			key += jttemp->iArr[j][jttemp->colSize[i]];
 	}
 
 	free(jttemp);
 	printf("%ld\n",key);
 	
-	return 1;
+	return key;
 }

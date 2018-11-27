@@ -4,6 +4,7 @@
 #include "dbinit.h"
 #include "FileIndexManager.h"
 #include "join.h"
+#include "globals.h"
 
 int main(int argc, char * argv[])
 {
@@ -14,6 +15,8 @@ int main(int argc, char * argv[])
 	dbint arr2[1] = {1};
 	dbint arr3[2] ={1,2};
 	int k;	
+
+	printJTable = 1;
 
 	init_db(100);
 	k = open_table("default.db",4);
