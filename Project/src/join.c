@@ -1,11 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 #include "defines.h"
 #include "globals.h"
 #include "Optimizer.h"
 #include "join.h"
 
+pthread_t thread_t[MAXJOINNUM + 1][MAXVALNUM + 1];
 int printJTable = FALSE;
 
 PNode * parse(char * input)
@@ -37,6 +39,7 @@ PNode * parse(char * input)
 			queryNum++;
 		}	
 	}
+
 	query[queryNum - 1] = (char*)malloc(sizeof(char) * 20);
 	strcpy(query[queryNum - 1], &str[arr[queryNum - 1]]); 
 
@@ -130,6 +133,9 @@ JTable * joining(PNode * left, PNode * right, JTable * jtleft, JTable * jtright)
 	
 	while(l < jtleft->numOfData || r < jtright->numOfData)
 	{
+		if(jtleft->numOfData <= 0 || jtright->numOfData <= 0)
+			return NULL;		
+	
 		while(jtleft->iArr[l][lcol] < jtright->iArr[r][rcol] || jtleft->iArr[l][lcol] > jtright->iArr[r][rcol])
 		{
 			if(jtleft->iArr[l][lcol] < jtright->iArr[r][rcol])
@@ -154,7 +160,7 @@ JTable * joining(PNode * left, PNode * right, JTable * jtleft, JTable * jtright)
 			break;
 		if(l >= jtleft->numOfData)
 		{
-			if(jtleft->iArr[jtleft->numOfData - 1][lcol] <= jtright->iArr[r][rcol])
+			if(jtleft->iArr[jtleft->numOfData - 1][lcol] <= jtright->iArr[r][rcol]) // numOfData == 0일 때 예외처리!!
 				break;
 			else
 				l = (jtleft->numOfData - 1);
@@ -264,6 +270,8 @@ JTable * join_table(PNode * tree)
 		jttemp = joining(left,right,jtleft, jtright);	
 		if(jtleft != memory_key[t])
 			cusFree(jtleft);
+		if(jttemp == NULL)
+			return NULL;
 		jtleft = jttemp;
 		temp = temp->parent;
 		left = temp->left;
@@ -297,10 +305,17 @@ dbint join(char * str)
 	JTable * jttemp;
 
 	if(pTree == NULL)
+	{
+		printf("%ld\n",key);
 		return 0;
-
+	}
 	jttemp = join_table(pTree);
 	
+	if(jttemp == NULL)
+	{
+		printf("%ld\n",key);
+		return 0;
+	}
 	for(j = 0 ; j < jttemp->numOfData ; j++)
 	{
 		key += jttemp->iArr[j][0];

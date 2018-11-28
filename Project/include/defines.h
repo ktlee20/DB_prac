@@ -11,6 +11,7 @@
 #define RESERVEDSIZE 104
 #define MAXVALNUM 15
 #define INITTREE 20
+#define MAXJOINNUM 10
 
 #define FAIL 0xFFFFFFFFFFFFFFFF
 
@@ -140,5 +141,12 @@ typedef struct queue
 	QNode * front;
 	QNode * rear;
 } Queue;
+
+typedef struct jtqsort
+{
+	dbint ** jt;
+	int col;
+	int length;
+} T0;
 
 #endif

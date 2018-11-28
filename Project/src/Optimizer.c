@@ -362,6 +362,9 @@ PNode* sort_selectivity(char ** query, int queryNum)
 	q = (Queue*)malloc(sizeof(Queue));
 	q1 = (Queue*)malloc(sizeof(Queue));
 
+	for(i = 0 ; i < (MAXTABLE + 1) ; i++)
+		using[i] = 0;
+
 	QInit(q);
 	QInit(q1);
 
@@ -404,17 +407,35 @@ PNode* sort_selectivity(char ** query, int queryNum)
 		slt[i] = selectivity(t1[i],t2[i],c1[i],c2[i]);
 	}
 		
-	stemp = slt[0];
-	j = 0;
-
-	for(i = 1 ; i < queryNum  ; i++)
-	{
-		if(stemp > slt[i])
+	for(i = queryNum ; i > 0 ; i--)
+		for(j = 0  ; j < i - 1; j++)
 		{
-			stemp = slt[i];
-			j = i;
-		}
-	}
+			if(slt[j] > slt[j + 1])
+			{
+				stemp2 = slt[j + 1];
+				slt[j + 1] = slt[j];
+				slt[j] = stemp2;
+
+				temp = t1[j + 1];
+				t1[j + 1] = t1[j];
+				t1[j] = temp;
+
+				temp = t2[j + 1];
+				t2[j + 1] = t2[j];
+				t2[j] = temp;
+	
+				temp = c1[j + 1];
+				c1[j + 1] = c1[j];
+				c1[j] = temp;
+
+				temp = c2[j + 1];
+				c2[j + 1] = c2[j];
+				c2[j] = temp;
+				
+			}		
+		} 
+
+	j = 0;
 
 	if(stemp == 0)
 		return NULL;	
@@ -426,6 +447,7 @@ PNode* sort_selectivity(char ** query, int queryNum)
 	while(q->numOfData != queryNum)
 	{
 		stemp = 18446744073709552000.000;
+		k = -1;
 		while(!QIsEmpty(q))
 		{
 			j = Dequeue(q);			
@@ -440,6 +462,9 @@ PNode* sort_selectivity(char ** query, int queryNum)
 				}
 			}				
 		}
+		if(k == -1)
+			return NULL;
+
 		Enqueue(q1,k);
 		using[k] = 1;
 		free(q);

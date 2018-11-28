@@ -24,10 +24,10 @@ $(TARGET) : $(TARGET_OBJ)
 	$(CC) $(OBJFLAGS) $(SRCDIR)dbbpt.c -o $(SRCDIR)dbbpt.o 
 	$(CC) $(OBJFLAGS) $(SRCDIR)dbinit.c -o $(SRCDIR)dbinit.o 
 	$(CC) $(OBJFLAGS) $(SRCDIR)Optimizer.c -o $(SRCDIR)Optimizer.o
-	$(CC) $(OBJFLAGS) $(SRCDIR)join.c -o $(SRCDIR)join.o
+	$(CC) $(OBJFLAGS) $(SRCDIR)join.c -o $(SRCDIR)join.o -pthread
 	make static_library
 	make library
-	$(CC) $(CFLAGS) $(TARGET_OBJ) -o $(TARGET)
+	$(CC) $(CFLAGS) $(TARGET_OBJ) -o $(TARGET) -pthread
 
 static_library:
 	ar cr $(LIBS)libbpt.a $(TARGET_OBJ)
