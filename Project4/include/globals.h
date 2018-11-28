@@ -2,6 +2,7 @@
 #define __GLOBALS_H_
 
 #include "defines.h"
+#include <pthread.h>
 
 extern FILE ** default_file;
 extern int * default_fd;
@@ -21,6 +22,8 @@ extern int numOfCol[MAXTABLE+1];
 extern OptInfo * oinfo[MAXTABLE+1];
 extern JTable * memory_key[MAXTABLE+1];
 
+//join.c
 extern int printJTable;
+extern pthread_t thread_t[MAXJOINNUM + 1][MAXVALNUM + 1];
 
 #endif

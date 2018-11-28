@@ -22,13 +22,15 @@ int main(int argc, char * argv[])
 
 	printJTable = 0;
 
-	init_db(100);
-	k = open_table("small-01.tab",2);
-	k = open_table("small-02.tab",2);
-	k = open_table("small-03.tab",2);
-	k = open_table("small-04.tab",2);
+	init_db(128);
+	k = open_table("medium-01.tab",2);
+	k = open_table("medium-02.tab",2);
+	k = open_table("medium-03.tab",2);
+	k = open_table("medium-04.tab",2);
+	k = open_table("medium-05.tab",2);
+	k = open_table("medium-06.tab",2);
 
-	fp = fopen("small","r");
+	fp = fopen("medium","r");
 	while(fgets(temp1,50,fp))
 	{
 		k = strlen(temp1);
