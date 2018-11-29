@@ -313,7 +313,7 @@ dbint join(char * str)
 	
 	if(jttemp == NULL)
 	{
-		printf("%ld\n",key);
+		//printf("%ld\n",key);
 		return 0;
 	}
 	for(j = 0 ; j < jttemp->numOfData ; j++)
@@ -324,7 +324,7 @@ dbint join(char * str)
 	}
 
 	free(jttemp);
-	printf("%ld\n",key);
+	//printf("%ld\n",key);
 	
 	return key;
 }

@@ -44,7 +44,7 @@ int headerInit(int i,int num_col)
 	
 	if(num_col != header[i]->headerp.numOfCol)
 	{
-		printf("Warning!! your num_col and header's numofCol is different. column number is set to header's number\n");
+		//printf("Warning!! your num_col and header's numofCol is different. column number is set to header's number\n");
 		numOfCol[i] = header[i]->headerp.numOfCol;
 	}	
 
