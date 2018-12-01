@@ -14,7 +14,7 @@
 
 int init_db(int num_buf)
 {
-	int i;
+	int i,j;
 
 	if(num_buf < 2)
 		num_buf = 2;
@@ -44,6 +44,10 @@ int init_db(int num_buf)
 		globalInit(i);
 		newBuf(num_buf, i);
 	}
+
+	for(i = 0 ; i < MAXJOINNUM + 1 ; i++)
+		for(j = 0 ; j < MAXVALNUM + 1 ; j++)
+			thread_t[i][j] = 0xFFFFFFFFFFFFFFFF;
 }
 
 int open_table(char * pathname, int num_column)

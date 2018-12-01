@@ -12,6 +12,7 @@
 #define MAXVALNUM 15
 #define INITTREE 20
 #define MAXJOINNUM 10
+#define QSTHREAD 8
 
 #define FAIL 0xFFFFFFFFFFFFFFFF
 
@@ -121,6 +122,10 @@ typedef struct _ptnode_
 {
 	int table_id;
 	int col;
+	int sorted;
+	int qsnum;
+	int tt[QSTHREAD];
+	int cc[QSTHREAD];
 	struct _ptnode_ *left;
 	struct _ptnode_ *right;
 	struct _ptnode_ *parent;
@@ -142,7 +147,7 @@ typedef struct queue
 	QNode * rear;
 } Queue;
 
-typedef struct jtqsort
+typedef struct _t_qsort
 {
 	dbint ** jt;
 	int col;

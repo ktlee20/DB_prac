@@ -53,6 +53,258 @@ PNode * parse(char * input)
 	return parseTree; 
 }
 
+void* tt_JTqsort(void * data)
+{
+	JTqsort(((T0*)data)->jt, ((T0*)data)->col, ((T0*)data)->length);
+	return NULL;
+}
+
+void* t_JTqsort(void * data,int table_id)
+{
+	T0 *ttemp = (T0*)data;	
+	T0 t1,t2,t3,t4;
+	dbint ** jt = ttemp->jt, *pivot, *temp;
+	int col = ttemp->col, length = ttemp->length;
+	int tmid,mid,mid2,mid3,i,j;
+	int status;
+	int tt1,tt2,tt3,tt4,cc1,cc2,cc3,cc4;
+
+	if(length <= 50)
+	{
+		while(thread_t[table_id][col] != -1)
+		{
+			col++;	
+			if(col == (MAXVALNUM + 1))
+			{
+				col = 0; 
+				table_id++;
+			}
+			if(table_id == (MAXJOINNUM + 1))
+				table_id = 0;
+		}
+		pthread_create(&thread_t[table_id][col], NULL, tt_JTqsort, (void*)ttemp);
+		pthread_join(thread_t[table_id][col], (void**)&status);			
+		thread_t[table_id][col] = -1;
+		return NULL;
+	}
+
+	mid = length / 2;
+	if(length <= 100)
+	{
+		JTqsort(&jt[mid - 10], ttemp->col, 20);
+		i = 0;
+		
+		pivot = jt[mid];	
+		jt[mid] = jt[0];
+		jt[0] = pivot;
+		
+		for(j = 1 ; j < length ; j++)
+			if(pivot[ttemp->col] >= jt[j][ttemp->col])		
+			{
+				i++;
+				if(i == j)
+					continue;
+				
+				temp = jt[i];
+				jt[i] = jt[j];
+				jt[j] = temp;
+			}
+
+		jt[0] = jt[i];
+		jt[i] = pivot; 
+		t1.jt = &jt[0];
+		t1.col = ttemp->col;
+		t1.length = i;	
+		t2.jt = &jt[i+1];
+		t2.col = ttemp->col;
+		t2.length = (length - i - 1);
+
+		while(thread_t[table_id][col] != -1)
+		{
+			col++;	
+			if(col == (MAXVALNUM + 1))
+			{
+				col = 0; 
+				table_id++;
+			}
+			if(table_id == (MAXTABLE + 1))
+				table_id = 0;
+		}
+		tt1 = table_id, cc1 = col;
+		pthread_create(&thread_t[tt1][cc1], NULL, tt_JTqsort, (void*)&t1);
+
+		while(thread_t[table_id][col] != -1)
+		{
+			col++;
+			if(col == (MAXVALNUM + 1))
+			{
+				col = 0;
+				table_id++;
+			}
+			if(table_id == (MAXTABLE + 1))
+				table_id++;
+		}
+		tt2 = table_id, cc2 = col;
+		pthread_create(&thread_t[tt2][cc2], NULL, tt_JTqsort, (void*)&t2);
+
+		pthread_join(thread_t[tt1][cc1], (void**)&status);			
+		pthread_join(thread_t[tt2][cc2], (void**)&status);			
+		thread_t[tt1][cc1] = -1;
+		thread_t[tt2][cc2] = -1;
+
+		return NULL;
+	}		
+	
+	JTqsort(&jt[mid - 25], ttemp->col, 50);
+
+	pivot = jt[mid];
+	jt[mid] = jt[0];
+	jt[0] = pivot;
+	i = 0;
+
+	for(j = 1 ; j < length ; j++)
+		if(pivot[ttemp->col] >= jt[j][ttemp->col])
+		{
+			i++;
+			if(i == j)
+				continue;
+			
+			temp = jt[i];
+			jt[i] = jt[j];
+			jt[j] = temp;
+		}
+
+	jt[0] = jt[i];
+	jt[i] = pivot;
+
+	mid2 = i/2;	
+	mid3 = i + ((length - i) / 2);
+	tmid = i;
+	
+	pivot = jt[mid2];
+	jt[mid2] = jt[0];
+	jt[0] = pivot;	
+	i = 0;
+
+	for(j = 1 ; j < tmid ; j++)
+		if(pivot[ttemp->col] >= jt[j][ttemp->col])
+		{
+			i++;
+			if(i == j)
+				continue;
+			
+			temp = jt[i];
+			jt[i] = jt[j];
+			jt[j] = temp;
+		}
+	
+	jt[0] = jt[i];
+	jt[i] = pivot;
+	
+	t1.jt = &jt[0];
+	t1.length = i;
+	t1.col = ttemp->col;	
+	t2.jt = &jt[i + 1];
+	t2.col = ttemp->col;
+	t2.length = tmid - i - 1;
+	
+	while(thread_t[table_id][col] != -1)
+	{
+		col++;
+		if(col == (MAXVALNUM + 1))
+		{
+			col = 0;
+			table_id++;
+		}
+		if(table_id == (MAXTABLE + 1))
+			table_id = 0;
+	}	
+	tt1 = table_id, cc1 = col;
+	thread_t[tt1][cc1] = 0;
+	pthread_create(&thread_t[tt1][cc1], NULL, tt_JTqsort, (void*)&t1);	
+
+	while(thread_t[table_id][col] != -1)
+	{
+		col++;
+		if(col == (MAXVALNUM + 1))
+		{
+			col = 0;
+			table_id++;
+		}
+		if(table_id == (MAXTABLE + 1))
+			table_id = 0;
+	}
+	tt2 = table_id, cc2 = col;
+	thread_t[tt2][cc2] = 0;
+	pthread_create(&thread_t[tt2][cc2], NULL, tt_JTqsort, (void*)&t2);
+	
+	pivot = jt[mid3];
+	jt[mid3] = jt[tmid];
+	jt[tmid] = pivot;
+	i = tmid;
+
+	for(j = tmid + 1 ; j < length ; j++)
+		if(pivot[ttemp->col] >= jt[j][ttemp->col])
+		{
+			i++;
+			if(i == j)
+				continue;
+			
+			temp = jt[i];
+			jt[i] = jt[j];
+			jt[j] = temp;
+		}
+	
+	jt[tmid] = jt[i];
+	jt[i] = pivot;
+	
+	t3.jt = &jt[tmid];
+	t3.length = i - tmid;
+	t3.col = ttemp->col;	
+	t4.jt = &jt[i + 1];
+	t4.col = ttemp->col;
+	t4.length = length - i - 1;
+	
+	while(thread_t[table_id][col] != -1)
+	{
+		col++;
+		if(col == (MAXVALNUM + 1))
+		{
+			col = 0;
+			table_id++;
+		}
+		if(table_id == (MAXTABLE + 1))
+			table_id++;
+	}
+	tt3 = table_id, cc3 = col;
+	thread_t[tt3][cc3] = 0;
+	pthread_create(&thread_t[tt3][cc3], NULL, tt_JTqsort, (void*)&t3);
+	
+	while(thread_t[table_id][col] != -1)
+	{
+		col++;
+		if(col == (MAXVALNUM + 1))
+		{
+			col = 0;
+			table_id++;
+		}
+		if(table_id == (MAXTABLE + 1))
+			table_id = 0;
+	}	
+	tt4 = table_id, cc4 = col;
+	thread_t[tt4][cc4] = 0;
+	pthread_create(&thread_t[tt4][cc4], NULL, tt_JTqsort, (void*)&t4);
+
+	pthread_join(thread_t[tt1][cc1], (void**)&status);
+	pthread_join(thread_t[tt2][cc2], (void**)&status);
+	pthread_join(thread_t[tt3][cc3], (void**)&status);
+	pthread_join(thread_t[tt4][cc4], (void**)&status);
+	
+	thread_t[tt1][cc1] = thread_t[tt2][cc2] = thread_t[tt3][cc3] = thread_t[tt4][cc4] = -1;
+	return NULL;
+	//qsort 한꺼번에 처음에 진행 join을 시작하면서 받는다.
+}
+
 void JTqsort(dbint** jt, int col,int length)
 {
 	int i = 0,j,mid;
@@ -94,7 +346,6 @@ void JTqsort(dbint** jt, int col,int length)
 		JTqsort(&jt[i + 1], col ,length - i - 1);
 }
 
-
 JTable * joining(PNode * left, PNode * right, JTable * jtleft, JTable * jtright)
 {
 	int i, j, l ,r, num, mark;
@@ -104,11 +355,13 @@ JTable * joining(PNode * left, PNode * right, JTable * jtleft, JTable * jtright)
 	dbint ** tempTable = (dbint**)malloc(sizeof(dbint*));
 	int *rtid = jtright->tid, *ltid = jtleft->tid;
 	int ntid[MAXTABLE];
+	T0 t_args1, t_args2;
 
 	newJtleft = (JTable*)malloc(sizeof(JTable));
 	newJtleft->joinedNum = jtleft->joinedNum + jtright->joinedNum;
 	newJtleft->numOfData = 0;
 
+	
 	for(i = 0 ; i < jtleft->joinedNum ; i++)
 	{
 		newJtleft->tid[i] = jtleft->tid[i];	
@@ -126,16 +379,24 @@ JTable * joining(PNode * left, PNode * right, JTable * jtleft, JTable * jtright)
 
 	tempTable[0] = (dbint*)malloc(sizeof(dbint) * newJtleft->colSize[newJtleft->joinedNum - 1]);
 	
-	JTqsort(jtleft->iArr, lcol, jtleft->numOfData);	
-	JTqsort(jtright->iArr, rcol, jtright->numOfData);
-	
+	t_args1.jt = jtleft->iArr;
+	t_args1.col = lcol;
+	t_args1.length = jtleft->numOfData;	
+
+	t_args2.jt = jtright->iArr;
+	t_args2.col = rcol;
+	t_args2.length = jtright->numOfData;
+
+	t_JTqsort(&t_args1,left->table_id);
+	t_JTqsort(&t_args2,right->table_id);
+
 	l = 0 , r = 0;
+	
+	if(jtleft->numOfData <= 0 || jtright->numOfData <= 0)
+		return NULL;
 	
 	while(l < jtleft->numOfData || r < jtright->numOfData)
 	{
-		if(jtleft->numOfData <= 0 || jtright->numOfData <= 0)
-			return NULL;		
-	
 		while(jtleft->iArr[l][lcol] < jtright->iArr[r][rcol] || jtleft->iArr[l][lcol] > jtright->iArr[r][rcol])
 		{
 			if(jtleft->iArr[l][lcol] < jtright->iArr[r][rcol])
@@ -160,7 +421,7 @@ JTable * joining(PNode * left, PNode * right, JTable * jtleft, JTable * jtright)
 			break;
 		if(l >= jtleft->numOfData)
 		{
-			if(jtleft->iArr[jtleft->numOfData - 1][lcol] <= jtright->iArr[r][rcol]) // numOfData == 0일 때 예외처리!!
+			if(jtleft->iArr[jtleft->numOfData - 1][lcol] <= jtright->iArr[r][rcol])
 				break;
 			else
 				l = (jtleft->numOfData - 1);
@@ -297,6 +558,9 @@ JTable * join_table(PNode * tree)
 	return jtleft;
 }
 
+////////////qsort 미리 이전에 수행하도록 당긴다.
+
+
 dbint join(char * str)
 {
 	int i,j;
@@ -305,17 +569,13 @@ dbint join(char * str)
 	JTable * jttemp;
 
 	if(pTree == NULL)
-	{
-		printf("%ld\n",key);
 		return 0;
-	}
+
 	jttemp = join_table(pTree);
 	
 	if(jttemp == NULL)
-	{
-		//printf("%ld\n",key);
 		return 0;
-	}
+
 	for(j = 0 ; j < jttemp->numOfData ; j++)
 	{
 		key += jttemp->iArr[j][0];

@@ -81,7 +81,7 @@ int read_table(int table_id, Page * c)
 
 int make_stat(int table_id)
 {
-	int i;
+	int i,j;
 	
 	oinfo[table_id] = (OptInfo*)malloc(sizeof(OptInfo));
 	oinfo[table_id]->num = FAIL;
@@ -92,6 +92,7 @@ int make_stat(int table_id)
 		oinfo[table_id]->mm[i].max = FAIL;
 	}	
 	read_table(table_id, rootpage[table_id]);
+	return 0;
 }
 
 int inmemory_scanner(int table_id, Page * c)
@@ -132,7 +133,7 @@ int inmemory_scanner(int table_id, Page * c)
 
 PNode * makeNode(int t, int c)
 {
-	int i,j;
+	int i;
 	PNode * temp = (PNode*)malloc(sizeof(PNode));
 
 	temp->table_id = t;
@@ -140,7 +141,12 @@ PNode * makeNode(int t, int c)
 	temp->right = NULL;
 	temp->left = NULL;
 	temp->parent = NULL;
-	
+	temp->sorted = 0;
+	temp->qsnum = 0;
+
+	for(i = 0 ; i < QSTHREAD ; i++)
+		temp->tt[i] = temp->cc[i] = 0;
+
 	return temp;
 }
 
@@ -437,7 +443,7 @@ PNode* sort_selectivity(char ** query, int queryNum)
 
 	j = 0;
 
-	if(stemp == 0)
+	if(slt[0] == 0)
 		return NULL;	
 	
 	Enqueue(q,j); 	
