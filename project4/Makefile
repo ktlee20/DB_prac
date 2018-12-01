@@ -10,8 +10,10 @@ TARGET_SRC:=$(SRCDIR)stress.c $(SRCDIR)DiskManager.c $(SRCDIR)FileIndexManager.c
 TARGET_OBJ:=$(SRCDIR)stress.o $(SRCDIR)DiskManager.o $(SRCDIR)FileIndexManager.o $(SRCDIR)dbbpt.o $(SRCDIR)dbinit.o $(SRCDIR)BufferManager.o $(SRCDIR)Optimizer.o $(SRCDIR)join.o
 TARGET_OBJ_FOR_LIB:=$(TARGET_SRC:.c=.o)
 
-CFLAGS+= -g -static -fPIC -I $(INC)
-OBJFLAGS+= -g -static -fPIC -c -I $(INC)
+CFLAGS+= -fPIC -I $(INC)
+OBJFLAGS+= -fPIC -c -I $(INC)
+#CFLAGS+= -g -static -fPIC -I $(INC)
+#OBJFLAGS+= -g -static -fPIC -c -I $(INC)
 
 TARGET:=stress
 
@@ -30,7 +32,8 @@ $(TARGET) : $(TARGET_OBJ)
 	$(CC) $(CFLAGS) $(TARGET_OBJ) -o $(TARGET) -pthread
 
 static_library:
-	ar cr $(LIBS)libbpt.a $(TARGET_OBJ)
+	ar rcv $(LIBS)libbpt.a $(TARGET_OBJ)
+	ranlib $(LIBS)libbpt.a
 
 library:
 	gcc -shared -Wl,-soname,libbpt.so -o $(LIBS)libbpt.so $(TARGET_OBJ_FOR_LIB)
