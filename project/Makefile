@@ -6,12 +6,11 @@ SRCDIR=src/
 INC=include/
 LIBS=lib/
 
+OBJFLAGS+= -c -I $(INC)
 
 LIB_FULL_NAME= $(LIBS)libbpt.a
 TARGET_SRC:=$(SRCDIR)DiskManager.c $(SRCDIR)FileIndexManager.c $(SRCDIR)dbbpt.c $(SRCDIR)dbinit.c $(SRCDIR)BufferManager.c $(SRCDIR)Optimizer.c $(SRCDIR)join.c
 TARGET_OBJ_FOR_LIB:=$(TARGET_SRC:%.c=%.o)
-USING_LIB= -lpthread
-OBJFLAGS+= -c -I $(INC) $(USING_LIB)
 
 $(LIB_FULL_NAME) : $(TARGET_OBJ_FOR_LIB)
 	$(AR) rcv $@ $(TARGET_OBJ_FOR_LIB)

@@ -561,7 +561,7 @@ JTable * join_table(PNode * tree)
 ////////////qsort 미리 이전에 수행하도록 당긴다.
 
 
-dbint join(char * str)
+dbint join(char const* str)
 {
 	int i,j;
 	PNode * pTree = parse(str);
