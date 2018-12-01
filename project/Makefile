@@ -26,7 +26,7 @@ $(TARGET_OBJ_FOR_LIB) : $(TARGET_SRC)
 	$(CC) $(OBJFLAGS) $(SRCDIR)join.c -o $(SRCDIR)join.o
 
 clean:
-	rm $(LIBS)* $(TARGET_OBJ_FOR_LIB)
+	rm $(LIBS)libbpt.a $(TARGET_OBJ_FOR_LIB)
 
 cleanall:
 	make clean
