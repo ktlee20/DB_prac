@@ -10,7 +10,7 @@
 pthread_t thread_t[MAXJOINNUM + 1][MAXVALNUM + 1];
 int printJTable = FALSE;
 
-PNode * parse(char * input)
+PNode * parse(const char * input)
 {
 	int i = 0;
 	int queryNum = 1;

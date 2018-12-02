@@ -355,7 +355,7 @@ PNode* sort_selectivity(char ** query, int queryNum)
 	int i,j,b1,b2,k;
 	PNode *ptemp;
 	int *t1,*t2,*c1,*c2,temp,len;
-	int * using;
+	int * Using;
 	double * slt, stemp,stemp2;
 	Queue *q, *q1, *qtemp;
 
@@ -364,12 +364,12 @@ PNode* sort_selectivity(char ** query, int queryNum)
 	c1 = (int*)malloc(sizeof(int) * queryNum);
 	c2 = (int*)malloc(sizeof(int) * queryNum);
 	slt = (double*)malloc(sizeof(double) * queryNum);
-	using = (int*)malloc(sizeof(int) * (MAXTABLE+1));
+	Using = (int*)malloc(sizeof(int) * (MAXTABLE+1));
 	q = (Queue*)malloc(sizeof(Queue));
 	q1 = (Queue*)malloc(sizeof(Queue));
 
 	for(i = 0 ; i < (MAXTABLE + 1) ; i++)
-		using[i] = 0;
+		Using[i] = 0;
 
 	QInit(q);
 	QInit(q1);
@@ -448,7 +448,7 @@ PNode* sort_selectivity(char ** query, int queryNum)
 	
 	Enqueue(q,j); 	
 
-	using[j] = 1;
+	Using[j] = 1;
 	
 	while(q->numOfData != queryNum)
 	{
@@ -461,7 +461,7 @@ PNode* sort_selectivity(char ** query, int queryNum)
 			b1 = t1[j], b2 = t2[j];	
 			for(i = 0 ; i < queryNum ; i++)
 			{
-				if((using[i] != 1) && (t1[i] == b1 || t2[i] == b1 || t1[i] == b2 || t2[i] == b2) && stemp > slt[i])
+				if((Using[i] != 1) && (t1[i] == b1 || t2[i] == b1 || t1[i] == b2 || t2[i] == b2) && stemp > slt[i])
 				{
 					stemp = slt[i];
 					k = i;	
@@ -472,7 +472,7 @@ PNode* sort_selectivity(char ** query, int queryNum)
 			return NULL;
 
 		Enqueue(q1,k);
-		using[k] = 1;
+		Using[k] = 1;
 		free(q);
 		q = q1;
 		q1 = (Queue*)malloc(sizeof(Queue));	
@@ -486,7 +486,7 @@ PNode* sort_selectivity(char ** query, int queryNum)
 	free(c1);
 	free(c2);
 	free(slt);
-	free(using);
+	free(Using);
 
 	return ptemp;
 }
