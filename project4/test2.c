@@ -17,20 +17,13 @@ int main(int argc, char * argv[])
 
 	printJTable = 0;
 
-	fp = fopen("medium","r");
 	init_db(128);
+	k = open_table("small-01.tab",2);
+	k = open_table("small-02.tab",2);
+	k = open_table("small-03.tab",2);
+	k = open_table("small-04.tab",2);
 
-	fgets(temp1,50,fp);
-	
-	while(temp1[0] != 'R')
-	{
-		for(i = 0 ; i < 50 ; i++)
-			if(temp1[i] == '\n')
-				temp1[i] = '\0';
-		k = open_table(temp1,2);
-		fgets(temp1, 50, fp);
-	}
-
+	fp = fopen("small","r");
 	while(fgets(temp1,50,fp))
 	{
 		k = strlen(temp1);
