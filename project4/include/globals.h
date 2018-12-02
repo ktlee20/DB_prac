@@ -2,6 +2,7 @@
 #define __GLOBALS_H_
 
 #include "defines.h"
+#include <stdio.h>
 #include <pthread.h>
 
 extern FILE ** default_file;
