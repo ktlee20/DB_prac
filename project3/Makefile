@@ -6,9 +6,9 @@ INC=include/
 LIBS=lib/
 
 
-TARGET_SRC:=$(SRCDIR)stress.c $(SRCDIR)DiskManager.c $(SRCDIR)FileIndexManager.c $(SRCDIR)dbbpt.c $(SRCDIR)dbinit.c $(SRCDIR)BufferManager.c
-TARGET_OBJ:=$(SRCDIR)stress.o $(SRCDIR)DiskManager.o $(SRCDIR)FileIndexManager.o $(SRCDIR)dbbpt.o $(SRCDIR)dbinit.o $(SRCDIR)BufferManager.o
-TARGET_OBJ_FOR_LIB:=$(TARGET_SRC:.c=.o)
+TARGET_SRC:=$(SRCDIR)stress.cpp $(SRCDIR)DiskManager.cpp $(SRCDIR)FileIndexManager.cpp $(SRCDIR)dbbpt.cpp $(SRCDIR)dbinit.cpp $(SRCDIR)BufferManager.cpp $(SRCDIR)Optimizer.cpp $(SRCDIR)join.cpp $(SRCDIC)LockManager.cpp
+TARGET_OBJ_FOR_LIB:=$(SRCDIR)DiskManager.o $(SRCDIR)FileIndexManager.o $(SRCDIR)dbbpt.o $(SRCDIR)dbinit.o $(SRCDIR)BufferManager.o $(SRCDIR)Optimizer.o $(SRCDIR)join.o $(SRCDIC)LockManager.o
+TARGET_OBJ:=$(TARGET_SRC:.c=.o)
 
 CFLAGS+= -fPIC -I $(INC)
 OBJFLAGS+= -fPIC -c -I $(INC)
@@ -18,17 +18,22 @@ TARGET:=stress
 all: $(TARGET)
 
 $(TARGET) : $(TARGET_OBJ)
-	$(CC) $(OBJFLAGS) $(SRCDIR)DiskManager.c -o $(SRCDIR)DiskManager.o 
-	$(CC) $(OBJFLAGS) $(SRCDIR)FileIndexManager.c -o $(SRCDIR)FileIndexManager.o
-	$(CC) $(OBJFLAGS) $(SRCDIR)BufferManager.c -o $(SRCDIR)BufferManager.o
-	$(CC) $(OBJFLAGS) $(SRCDIR)dbbpt.c -o $(SRCDIR)dbbpt.o 
-	$(CC) $(OBJFLAGS) $(SRCDIR)dbinit.c -o $(SRCDIR)dbinit.o 
+	$(CC) $(OBJFLAGS) $(SRCDIR)DiskManager.cpp -o $(SRCDIR)DiskManager.o 
+	$(CC) $(OBJFLAGS) $(SRCDIR)FileIndexManager.cpp -o $(SRCDIR)FileIndexManager.o
+	$(CC) $(OBJFLAGS) $(SRCDIR)BufferManager.cpp -o $(SRCDIR)BufferManager.o
+	$(CC) $(OBJFLAGS) $(SRCDIR)dbbpt.cpp -o $(SRCDIR)dbbpt.o 
+	$(CC) $(OBJFLAGS) $(SRCDIR)dbinit.cpp -o $(SRCDIR)dbinit.o 
+	$(CC) $(OBJFLAGS) $(SRCDIR)Optimizer.cpp -o $(SRCDIR)Optimizer.o 
+	$(CC) $(OBJFLAGS) $(SRCDIR)join.cpp -o $(SRCDIR)join.o 
+	$(CC) $(OBJFLAGS) $(SRCDIR)LockManager.cpp -o $(SRCDIR)LockManager.o 
+	$(CC) $(OBJFLAGS) $(SRCDIR)stress.cpp -o $(SRCDIR)stress.o 
 	make static_library
 	make library
 	$(CC) $(CFLAGS) $(TARGET_OBJ) -o $(TARGET)
 
 static_library:
-	ar cr $(LIBS)libbpt.a $(TARGET_OBJ)
+	ar cr $(LIBS)libbpt.a $(TARGET_OBJ_FOR_LIB)
+	ranlib $(LIBS)libbpt.a
 
 library:
 	gcc -shared -Wl,-soname,libbpt.so -o $(LIBS)libbpt.so $(TARGET_OBJ_FOR_LIB)

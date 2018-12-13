@@ -10,8 +10,7 @@ int main(int argc, char * argv[])
 	char * temp;
 	int k;	
 
-	init_db(1);
-	//init_db(100);
+	init_db(128);
 	k = open_table("default.db");
 
 	for(i = 0 ; i < 10000; i++)
