@@ -43,6 +43,7 @@ lock_t * makeLock(int table_id, txn_t * txn, dbint page_id, uint64_t timestamp, 
 	retLock->timestamp = timestamp;
 	retLock->mode = mode;
 	retLock->cond = PTHREAD_COND_INITIALIZER;	
+	retLock->lock_mutex = PTHREAD_MUTEX_INITIALIZER;
 	retLock->buffer = buf;
 
 	node->lock = retLock;	
@@ -53,8 +54,9 @@ lock_t * makeLock(int table_id, txn_t * txn, dbint page_id, uint64_t timestamp, 
 	if(temp == NULL)
 	{
 		txn->txn_locks = node;	
-		
+		return retLock;
 	}
+
 	while(temp->next != NULL)
 		temp = temp->next;
 	
@@ -143,7 +145,7 @@ int txnSize()
 {
 	int size;
 	pthread_mutex_lock(&txnlist.txn_list_mutex);
-	size = txnlist.tail->txn->tid - txnlist.head->txn->tid;
+	size = txnlist.tail->txn->tid - txnlist.head->txn->tid + 1;
 	pthread_mutex_unlock(&txnlist.txn_list_mutex);
 
 	return size;
@@ -186,7 +188,8 @@ txn_t * TXN_LDelete(int tid)
 		if(temp->txn->tid == tid)
 		{
 			txnlist.head = temp->next;
-			txnlist.head->prev = NULL;
+			if(txnlist.head != NULL)
+				txnlist.head->prev = NULL;
 			retTxn = temp->txn;
 			free(temp);
 		}
@@ -227,17 +230,25 @@ lock_t * find_lock_table(dbint page_id, int tid, int table_id, LMODE mode)
 
 	thash = locktable[table_id].HashTable[hash];
 
+	if(thash == NULL)
+		return NULL;
+
 	while(thash->page_id != page_id && thash->next != NULL)
 		thash = thash->next;
 	
 	if(thash == NULL)
 		return NULL;
+
 	dltemp = thash->head;
 
 	while(dltemp->next != NULL && (dltemp->lock->txn->tid != tid || dltemp->lock->mode != mode))
 		dltemp = dltemp->next;
 	
 	if(dltemp->lock->txn->tid == tid && dltemp->lock->mode == mode)
+	{
+		return dltemp->lock;
+	}
+	else if(dltemp->lock->txn->tid == tid && dltemp->lock->mode != mode)
 	{
 		return dltemp->lock;
 	}
@@ -258,6 +269,7 @@ DLNode * dl_find_lock_table(dbint page_id, int tid, int table_id, LMODE mode)
 	hash = page_id % HSIZE;
 	
 	thash = locktable[table_id].HashTable[hash];
+	dltemp = thash->head;
 
 	while(dltemp->next != NULL && (dltemp->lock->txn->tid != tid || dltemp->lock->mode != mode))
 		dltemp = dltemp->next;
@@ -272,7 +284,7 @@ DLNode * dl_find_lock_table(dbint page_id, int tid, int table_id, LMODE mode)
 	}
 }
 
-int set_lock(txn_t * txn, dbint page_id, int tid, int table_id, uint64_t timestamp, Bufstrt * buf, LMODE mode)
+int set_lock(txn_t * txn, dbint page_id, int tid, int table_id, uint64_t timestamp, Bufstrt * buf, LMODE mode, lock_t ** pplock)
 {
 	lock_t * newlock = makeLock(table_id, txn, page_id, timestamp, mode, buf);
 	int hash = page_id % HSIZE;	
@@ -311,7 +323,9 @@ int set_lock(txn_t * txn, dbint page_id, int tid, int table_id, uint64_t timesta
 	dltemp2 = locktable[table_id].HashTable[hash]->tail;
 	
 	if(dltemp2 == locktable[table_id].HashTable[hash]->head)
+	{
 		retVal = 1;
+	}
 	else
 	{
 		while(dltemp2->prev != NULL && dltemp2->lock->mode != EXCLUSIVE)
@@ -323,10 +337,12 @@ int set_lock(txn_t * txn, dbint page_id, int tid, int table_id, uint64_t timesta
 			retVal = 1;
 	}	
 	
+	*pplock = newlock;
+	buf->is_pinned++;
 	return retVal;
 }
 
-int wake_up_txn(DLNode * dltemp)
+int wake_up_txn(tHash * thash, DLNode * dltemp, DLNode * origin)
 {
 	lock_t * nlock;
 	txn_t * ntxn = dltemp->lock->txn;
@@ -340,7 +356,7 @@ int wake_up_txn(DLNode * dltemp)
 		while(dltemp2->prev != NULL && dltemp2->lock->mode != EXCLUSIVE)
 			dltemp2 = dltemp2->prev;		
 
-		if(dltemp2->lock->mode == EXCLUSIVE)
+		if(dltemp2->lock->mode == EXCLUSIVE && thash->head != dltemp2)
 			return 0;
 
 		locknode = locknode->next;
@@ -349,11 +365,11 @@ int wake_up_txn(DLNode * dltemp)
 	ntxn->wait_locks = NULL;	
 	locknode = ntxn->txn_locks;
 	
-	pthread_mutex_lock(&nlock->lock_mutex);
-	ntxn->mode = RUNNING;
 	while(locknode != NULL)
 	{
 		nlock = locknode->lock;
+		pthread_mutex_lock(&nlock->lock_mutex);
+		ntxn->mode = RUNNING;
 		pthread_cond_signal(&nlock->cond);
 		pthread_mutex_unlock(&nlock->lock_mutex);
 		locknode = locknode->next;
@@ -369,7 +385,6 @@ lock_t * insert_lock_table(dbint page_id, int tid, int table_id, uint64_t timest
 	txn_t * ttxn;
 	lock_t * tlock;	
 	Bufstrt * buf = get_buf_node(page_id, table_id);
-	buf->is_pinned++;
 
 	pthread_mutex_lock(&locktable[table_id].ltmutex);
 	
@@ -381,11 +396,11 @@ lock_t * insert_lock_table(dbint page_id, int tid, int table_id, uint64_t timest
 	if((tlock = find_lock_table(page_id, tid, table_id, mode)) != NULL)	
 	{
 		pthread_mutex_unlock(&locktable[table_id].ltmutex);
-		return NULL;	
+		return tlock;	
 	}
-	flags = set_lock(ttxn, page_id, tid, table_id, timestamp, buf, mode);
+	flags = set_lock(ttxn, page_id, tid, table_id, timestamp, buf, mode, &tlock);
 							
-	if(deadlock_check(tid, page_id, table_id, mode))
+	if(deadlock_check(tid, page_id, table_id, mode) == DEADLOCK)
 	{
 		abort_txn(ttxn);
 		pthread_mutex_unlock(&locktable[table_id].ltmutex);
@@ -403,6 +418,7 @@ lock_t * insert_lock_table(dbint page_id, int tid, int table_id, uint64_t timest
 	else
 	{	
 		pthread_mutex_unlock(&locktable[table_id].ltmutex);
+		ttxn->mode = RUNNING;
 		return tlock;
 	}
 }
@@ -411,9 +427,10 @@ int issleep(txn_t * txn)
 {
 	pthread_mutex_lock(&txnlist.txn_list_mutex);
 	if(txn->mode == WAITING)
+	{
 		pthread_mutex_unlock(&txnlist.txn_list_mutex);
 		return 1;
-
+	}
 	pthread_mutex_unlock(&txnlist.txn_list_mutex);
 	return 0;
 }
@@ -438,6 +455,28 @@ tHash * find_thash(int table_id, int page_id, int hash)
 	return thash;
 }
 
+/*
+void delete_thash(int table_id, dbint page_id, int hash, tHash * thash)
+{
+	tHash * thash = locktable[table_id].HashTable[hash], *temp = NULL;
+
+	while(thash->next != NULL && thash->page_id != page_id)
+	{
+		temp = thash;
+		thash = thash->next;
+	}
+	
+	if(temp != NULL)
+	{
+		temp->next = thash->next;
+	}
+	else
+	{
+		locktable[table_id].HashTable[hash] = thash->next;	
+	}
+	free(thash);	
+}
+*/
 DLNode * find_dlnode(tHash * thash, int temp)
 {
 	DLNode * dltemp = thash->head;
@@ -461,7 +500,7 @@ int deadlock_check(int tid, dbint page_id, int table_id, LMODE mode)
 	txn_t * ttxn;
 	lock_t * tlock;
 	LNode * locknode;
-	tHash * thash;
+	tHash * thash = find_thash(table_id, page_id, page_id % HSIZE);
 	DLNode * dltemp,* dltemp2;
 	queue<int> q1;
 	queue<DLNode*> q2, q3;
@@ -475,14 +514,18 @@ int deadlock_check(int tid, dbint page_id, int table_id, LMODE mode)
 	temp = q1.front();
 	q1.pop();
 	hash = page_id % HSIZE;
-	thash = find_thash(table_id, hash);
 
-	while(dltemp->prev != NULL)
+
+	while(dltemp != NULL)
 	{
-		dltemp = dltemp->prev;
+		dltemp->isvisit = 1;
+		q3.push(dltemp);
+
 		temp = dltemp->lock->txn->tid;
 		if(visit[temp] != 1)
 			q1.push(temp);
+
+		dltemp = dltemp->prev;
 	}
 	
 	while(!q1.empty())
@@ -497,8 +540,9 @@ int deadlock_check(int tid, dbint page_id, int table_id, LMODE mode)
 		{
 			tlock = locknode->lock;
 			hash = (tlock->page_id) % HSIZE;
-			thash = find_thash(tlock->table_id, hash);
+			thash = find_thash(tlock->table_id, page_id ,hash);
 			dltemp = find_dlnode(thash, temp);
+
 			if(dltemp->isvisit == 0)
 			{
 				dltemp->isvisit = 1;
@@ -514,30 +558,30 @@ int deadlock_check(int tid, dbint page_id, int table_id, LMODE mode)
 		dltemp2 = q2.front();	
 		q2.pop();
 		dltemp2 = dltemp2->next;
-		
-		if(dltemp2->lock->page_id == page_id)
-		{
-			while(!q3.empty())
-			{
-				dltemp = q3.front();
-				q3.pop();
-				dltemp->isvisit = 0;
-			}
-			
-			return DEADLOCK;			
-		}
 
 		while(dltemp2 != NULL)
 		{
-			ttxn = dltemp2->lock->txn;	
+			if(dltemp2->lock->page_id == page_id)
+			{
+				while(!q3.empty())
+				{
+					dltemp = q3.front();
+					q3.pop();
+					dltemp->isvisit = 0;
+				}
+
+				return DEADLOCK;			
+			}
+			ttxn = dltemp2->lock->txn;
 			locknode = ttxn->txn_locks;
+
 			while(locknode != NULL)
 			{
 				tlock = locknode->lock;
 				hash = (tlock->page_id) % HSIZE;
-				thash = find_thash(tlock->table_id, hash);
+				thash = find_thash(tlock->table_id, page_id, hash);
 				dltemp = find_dlnode(thash, temp);
-				if(dltemp->isvisit = 0)	
+				if(dltemp->isvisit = 0)
 				{
 					dltemp->isvisit = 1;
 					q2.push(dltemp);
@@ -547,8 +591,8 @@ int deadlock_check(int tid, dbint page_id, int table_id, LMODE mode)
 			}
 			dltemp2 = dltemp2->next;
 		}
+
 	}
-		
 	while(!q3.empty())
 	{
 		dltemp = q3.front();
@@ -583,9 +627,10 @@ void putLog(txn_t * txn, int table_id ,dbint page_id, dbint record_id, dbint * o
 	pthread_mutex_unlock(&txnlist.txn_list_mutex);
 }
 
+
 void delete_from_lock_table(txn_t * dtxn)
 {
-	LNode * temp = dtxn->txn_locks;
+	LNode * temp = dtxn->txn_locks, *temp2;
 	lock_t * dlock;
 	DLNode *dltemp, *dltemp2;
 	tHash * thash;
@@ -595,7 +640,7 @@ void delete_from_lock_table(txn_t * dtxn)
 	{
 		table_id = temp->lock->table_id;	
 		dlock = temp->lock;
-		thash = find_thash(table_id, (dlock->page_id / HSIZE));
+		thash = find_thash(table_id, dlock->page_id ,(dlock->page_id % HSIZE));
 		dltemp = thash->head;	
 		
 		while(dltemp->next != NULL && dltemp->lock != dlock)
@@ -608,25 +653,39 @@ void delete_from_lock_table(txn_t * dtxn)
 			
 			if(dltemp->lock->mode == EXCLUSIVE)
 			{
-				wake_up_txn(dltemp2);
-				if(dltemp2->lock->mode == SHARED)
+				if(dltemp2 != NULL)
 				{
-					while(dltemp2->next != NULL && dltemp->lock->mode == SHARED)
+					wake_up_txn(thash, dltemp2, dltemp);
+					if(dltemp2->lock->mode == SHARED)
 					{
-						dltemp2 = dltemp2->next;
-						wake_up_txn(dltemp2);
+						while(dltemp2->next != NULL && dltemp->lock->mode == SHARED)
+						{
+							dltemp2 = dltemp2->next;
+							wake_up_txn(thash, dltemp2, dltemp);
+						}
 					}
 				}
 			}
 			else
 			{
-				if(dltemp2->lock->mode == EXCLUSIVE)
-					wake_up_txn(dltemp2);
+				if(dltemp2 != NULL)
+				{
+					if(dltemp2->lock->mode == EXCLUSIVE)
+						wake_up_txn(thash, dltemp2, dltemp);
+				}
 			}
+
 			if(thash->head != NULL)
 				thash->head->prev = NULL;
 			
 			dltemp->lock->buffer->is_pinned--;
+			
+			if(locktable[table_id].HashTable[dlock->page_id % HSIZE]->head == NULL)
+			{
+				 locktable[table_id].HashTable[dlock->page_id % HSIZE] = NULL;
+				 free(thash);
+			}
+
 			free(dltemp->lock);
 			free(dltemp);
 		}
@@ -648,6 +707,10 @@ void delete_from_lock_table(txn_t * dtxn)
 			free(dltemp->lock);
 			free(dltemp);
 		}
+
+		temp2 = temp;
+		temp = temp->next;
+		free(temp2);
 	}
 }
 
@@ -658,7 +721,7 @@ void recover_log(txn_t * txn)
 	int num = txn->lognum;
 	int i,j,k;
 
-	for(i = 0 ; i < num ; i++)
+	for(i = num - 1 ; i >= 0 ; i--)
 	{
 		buf_read_page(logs[i].page_id, &temp, logs[i].table_id);
 
@@ -686,7 +749,7 @@ int abort_txn(txn_t * txn)
 	return 1;
 }
 
-int force(txn_t * txn)
+int * force(txn_t * txn)
 {
 	LNode * locknode = txn->txn_locks, *temp;
 	Page dest;
@@ -696,28 +759,28 @@ int force(txn_t * txn)
 	
 	while(locknode != NULL)
 	{
-		temp = locknode;
-		buf_read_page(locknode->lock->page_id, &dest, locknode->lock->table_id);
-		file_write_page(locknode->lock->page_id, &dest, locknode->lock->table_id);
-		isVisit[locknode->lock->table_id] = 1;
+		
+		if(isVisit[locknode->lock->table_id] == 0)
+		{
+			isVisit[locknode->lock->table_id] = 1;
+			pthread_mutex_lock(&locktable[locknode->lock->table_id].ltmutex);
+		}	
+		buf_read_page(locknode->lock->page_id/PAGESIZE, &dest, locknode->lock->table_id);
+		file_write_page(locknode->lock->page_id/PAGESIZE, &dest, locknode->lock->table_id);
 		locknode = locknode->next;
-		free(locknode->lock);
-		free(locknode);
 	}	
 	
 	for(int i = 0 ; i <= MAXTABLE ; i++)
 		if(isVisit[i] == 1)
 			fsync(default_fd[i]);
 
-	free(isVisit);
-
-	return 1;
+	return isVisit;
 }
 
 int begin_tx()
 {
 	int newTxn = __sync_fetch_and_add(&txnNumber, 1);	
-	txn_t * temp = makeTxn(newTxn);	
+	txn_t * temp = makeTxn(++newTxn);	
 	TXN_LInsert(temp);
 
 	return newTxn;
@@ -726,10 +789,17 @@ int begin_tx()
 int end_tx(int tid)
 {
 	txn_t * dtxn = TXN_LDelete(tid);
-	force(dtxn);
-	delete_from_lock_table(dtxn);	
-	TXN_LDelete(tid);
+	int * isVisit, i;	
+	LNode * temp_locks;
+	LNode * temp;
 
+	isVisit = force(dtxn);
+	delete_from_lock_table(dtxn);	
+	for(i = 1 ; i <= MAXTABLE ; i++)
+		if(isVisit[i] == 1)
+			pthread_mutex_unlock(&locktable[i].ltmutex);		
+
+	free(isVisit);
 	free(dtxn->logs);
 	free(dtxn);	
 

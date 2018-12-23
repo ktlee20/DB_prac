@@ -132,6 +132,9 @@ int insert(int table_id,dbint key, dbint* values)
 dbint * find(int table_id, dbint key, int tid, int * result)
 {
 	dbint page_id = get_leaf_page_id(rootpage[table_id],key,table_id);
+	if(page_id == FAIL)
+		return NULL;
+
 	lock_t * lock = insert_lock_table(page_id, tid, table_id,__sync_fetch_and_add(&timer[table_id], 1), SHARED);
 	Page * page;	
 	int i,j;
@@ -160,7 +163,7 @@ dbint * find(int table_id, dbint key, int tid, int * result)
 
 	value[0] = page->leafp.records[i].key;
 	for(j = 1 ; j < numOfCol[table_id] ; j++)
-		value[j] = page->leafp.records[i].values[j];	
+		value[j] = page->leafp.records[i].values[j - 1];	
 
 	*result = SUCCESS;
 	
@@ -172,7 +175,10 @@ dbint * find(int table_id, dbint key, int tid, int * result)
 int update(int table_id, dbint key, dbint * values, int tid, int * result)
 {
 	dbint page_id = get_leaf_page_id(rootpage[table_id],key,table_id);
-	lock_t * lock = insert_lock_table(page_id, tid, table_id, __sync_fetch_and_add(&timer[table_id],1), SHARED);
+	if(page_id == FAIL)
+		return 0;
+
+	lock_t * lock = insert_lock_table(page_id, tid, table_id, __sync_fetch_and_add(&timer[table_id],1), EXCLUSIVE);
 	Page * page;
 	dbint * oldvalues, * newvalues;	
 	int i,j;

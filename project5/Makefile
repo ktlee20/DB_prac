@@ -6,7 +6,7 @@ SRCDIR=src/
 INC=include/
 LIBS=lib/
 
-OBJFLAGS+= -std=c++11 -c -I $(INC) 
+OBJFLAGS+= -std=c++11 -g -static -c -I $(INC) 
 
 LIB_FULL_NAME= $(LIBS)libbpt.a
 TARGET_SRC:=$(SRCDIR)DiskManager.cpp $(SRCDIR)FileIndexManager.cpp $(SRCDIR)dbbpt.cpp $(SRCDIR)dbinit.cpp $(SRCDIR)BufferManager.cpp $(SRCDIR)Optimizer.cpp $(SRCDIR)join.cpp $(SRCDIR)LockManager.cpp

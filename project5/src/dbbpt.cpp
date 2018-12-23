@@ -449,6 +449,13 @@ dbint get_leaf_page_id(node * root, dbint key, int p)
 		}
 	}
 
+	for(i = 0 ; i < c->leafp.pheader.numOfKeys ; i++)
+		if(key == c->leafp.records[i].key)
+			break;
+
+	if(i == c->leafp.pheader.numOfKeys)
+		return FAIL;
+	
 	return offset;	
 }
 node* dbdelete(node * root, dbint key, int p)

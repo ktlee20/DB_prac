@@ -40,6 +40,7 @@ void newBuf(int num_buf, int table_id)
 	bufctrl[table_id].buffer = NULL;
 	bufctrl[table_id].bufferlast = NULL;
 	bufctrl[table_id].curPos = 0;
+	bufctrl[table_id].buf_ctrl_mutex = PTHREAD_MUTEX_INITIALIZER;
 }
 
 void closeBuf(int table_id)
@@ -159,7 +160,7 @@ Bufstrt * get_buf_node(pagenum_t offset, int table_id)
 	Bufstrt * tempNode, * oldNode;
 	pthread_mutex_lock(&bufctrl[table_id].buf_ctrl_mutex);
 	
-	tempNode = find_leaf_buffer(offset, table_id);	
+	tempNode = find_leaf_buffer(offset/PAGESIZE, table_id);	
 
 	if(tempNode != NULL)
 	{
@@ -170,24 +171,24 @@ Bufstrt * get_buf_node(pagenum_t offset, int table_id)
 		tempNode = makeBufNode();
 		if(bufctrl[table_id].curPos == 0)
 		{
-			bufferAttr(tempNode, offset, table_id);
+			bufferAttr(tempNode, offset/PAGESIZE, table_id);
 			bufctrl[table_id].buffer = bufctrl[table_id].bufferlast = tempNode;
-			file_read_page(offset, &bufctrl[table_id].buffer->frame, table_id);
+			file_read_page(offset/PAGESIZE, &bufctrl[table_id].buffer->frame, table_id);
 			bufctrl[table_id].curPos++;
 		}
 		else if(bufctrl[table_id].bufsize > bufctrl[table_id].curPos)
 		{
-			bufferAttr(tempNode, offset, table_id);
+			bufferAttr(tempNode, offset/PAGESIZE, table_id);
 			bufctrl[table_id].bufferlast->next = tempNode;
 			tempNode->prev = bufctrl[table_id].bufferlast;
 			bufctrl[table_id].bufferlast = tempNode;
-			file_read_page(offset, &bufctrl[table_id].bufferlast->frame, table_id);
+			file_read_page(offset/PAGESIZE, &bufctrl[table_id].bufferlast->frame, table_id);
 			bufctrl[table_id].bufferlast->next = NULL;
 			bufctrl[table_id].curPos++;
 		}
 		else
 		{
-			bufferAttr(tempNode, offset ,table_id);
+			bufferAttr(tempNode, offset/PAGESIZE ,table_id);
 			file_write_page(get_page_offset(bufctrl[table_id].buffer), &bufctrl[table_id].buffer->frame, table_id);
 			oldNode = bufctrl[table_id].buffer;
 			bufctrl[table_id].buffer = bufctrl[table_id].buffer->next;
@@ -196,7 +197,7 @@ Bufstrt * get_buf_node(pagenum_t offset, int table_id)
 			bufctrl[table_id].bufferlast->next = tempNode;
 			tempNode->prev = bufctrl[table_id].bufferlast;
 			bufctrl[table_id].bufferlast = tempNode;
-			file_read_page(offset, &bufctrl[table_id].bufferlast->frame, table_id);
+			file_read_page(offset/PAGESIZE, &bufctrl[table_id].bufferlast->frame, table_id);
 			bufctrl[table_id].bufferlast->next = NULL;
 		}
 	}
