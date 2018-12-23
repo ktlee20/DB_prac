@@ -380,7 +380,7 @@ node * find_leaf(node * root, dbint key, pagenum_t * poffset, int p)
 
 	c = (node*)malloc(sizeof(node));
 
-	buf_read_page(offset/PAGESIZE,c,p, key);
+	buf_read_page(offset/PAGESIZE,c,p);
 		
 	while(!c->internalp.pheader.is_leaf)
 	{
@@ -415,6 +415,42 @@ node * find_leaf(node * root, dbint key, pagenum_t * poffset, int p)
 	return ret;
 }
 
+dbint get_leaf_page_id(node * root, dbint key, int p)
+{
+	int i =0;
+	node * c = root;
+	pagenum_t offset = header[p]->headerp.rootp_offset;
+
+	if(c == NULL)
+	{
+		return -1;
+	}
+	c = (node*)malloc(sizeof(node));
+	file_read_page(offset/PAGESIZE , c , p);
+	while(!(c->internalp.pheader.is_leaf))
+	{
+		i = 0;
+		while(i < c->internalp.pheader.numOfKeys)
+		{
+			if(key >= c->internalp.entities[i].key)
+				i++;
+			else
+				break;
+		}
+		if(i == 0)
+		{
+			offset = c->internalp.pheader.other_page_offset;
+			file_read_page(c->internalp.pheader.other_page_offset/PAGESIZE, c, p);
+		}
+		else
+		{
+			offset = c->internalp.entities[i - 1].offset;
+			file_read_page(c->internalp.entities[i - 1].offset / PAGESIZE , c, p);
+		}
+	}
+
+	return offset;	
+}
 node* dbdelete(node * root, dbint key, int p)
 {
 	node * key_leaf;

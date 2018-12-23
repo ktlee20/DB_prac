@@ -10,6 +10,7 @@
 #include "BufferManager.h"
 #include "FileIndexManager.h"
 #include "Optimizer.h"
+#include "LockManager.h"
 #include "globals.h"
 
 int init_db(int num_buf)
@@ -128,7 +129,96 @@ int insert(int table_id,dbint key, dbint* values)
 	}
 }
 
-dbint* find(int table_id, dbint key, int tid, int * result)
+dbint * find(int table_id, dbint key, int tid, int * result)
+{
+	dbint page_id = get_leaf_page_id(rootpage[table_id],key,table_id);
+	lock_t * lock = insert_lock_table(page_id, tid, table_id,__sync_fetch_and_add(&timer[table_id], 1), SHARED);
+	Page * page;	
+	int i,j;
+	dbint * value;
+
+	if(lock == NULL)
+	{
+		*result = FAILED;
+		pthread_mutex_unlock(&bufctrl[table_id].buf_ctrl_mutex);
+		return NULL;
+	}	
+	
+	pthread_mutex_lock(&lock->lock_mutex);
+	while(lock->txn->mode != RUNNING)
+	{
+		pthread_cond_wait(&lock->cond, &lock->lock_mutex);
+	}
+	pthread_mutex_unlock(&lock->lock_mutex);
+	page = &lock->buffer->frame;	
+
+	for(i = 0 ; i < page->leafp.pheader.numOfKeys ; i++)
+		if(page->leafp.records[i].key == key)
+			break;
+
+	value = (dbint*)malloc(sizeof(dbint) * numOfCol[table_id]);
+
+	value[0] = page->leafp.records[i].key;
+	for(j = 1 ; j < numOfCol[table_id] ; j++)
+		value[j] = page->leafp.records[i].values[j];	
+
+	*result = SUCCESS;
+	
+	pthread_mutex_unlock(&bufctrl[table_id].buf_ctrl_mutex);
+	return value;
+		
+}
+
+int update(int table_id, dbint key, dbint * values, int tid, int * result)
+{
+	dbint page_id = get_leaf_page_id(rootpage[table_id],key,table_id);
+	lock_t * lock = insert_lock_table(page_id, tid, table_id, __sync_fetch_and_add(&timer[table_id],1), SHARED);
+	Page * page;
+	dbint * oldvalues, * newvalues;	
+	int i,j;
+	
+	if(lock == NULL)
+	{
+		*result = FAILED;
+		pthread_mutex_unlock(&bufctrl[table_id].buf_ctrl_mutex);
+		return 0;
+	}
+
+	pthread_mutex_lock(&lock->lock_mutex);
+	while(lock->txn->mode != RUNNING)
+	{
+		pthread_cond_wait(&lock->cond, &lock->lock_mutex);
+	}
+	pthread_mutex_unlock(&lock->lock_mutex);
+	page = &lock->buffer->frame;
+
+	for(i = 0 ; i < page->leafp.pheader.numOfKeys ; i++)
+		if(page->leafp.records[i].key == key)
+			break;
+
+	oldvalues = (dbint*)malloc(sizeof(dbint) * numOfCol[table_id]);
+	newvalues = (dbint*)malloc(sizeof(dbint) * numOfCol[table_id]);
+
+	oldvalues[0] = page->leafp.records[i].key;
+	newvalues[0] = key;
+	
+	for(j = 1 ; j < numOfCol[table_id] ; j++)
+		oldvalues[j] = page->leafp.records[i].values[j - 1];
+
+
+	page->leafp.records[i].key = key;	
+		
+	for(j = 0 ; j < numOfCol[table_id] - 1 ; j++)
+		newvalues[j + 1] = page->leafp.records[i].values[j] = values[j];
+
+	putLog(lock->txn, table_id, page_id, key, oldvalues, newvalues);
+	
+	*result = SUCCESS;
+	pthread_mutex_unlock(&bufctrl[table_id].buf_ctrl_mutex);
+	return 1;
+}
+
+dbint* no_th_find(int table_id, dbint key)
 {
 	int i;
 	pagenum_t leaf_offset;

@@ -16,5 +16,6 @@ void buf_flush_page(pagenum_t offset, int table_id);
 Page * buf_read_page(pagenum_t offset, Page * dest ,int table_id);
 void buf_write_page(pagenum_t offset, Page * src, int table_id);
 void buf_lru_set(Bufstrt * node,int table_id);
+Bufstrt * get_buf_node(pagenum_t offset, int table_id);
 
 #endif

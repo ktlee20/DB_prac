@@ -150,14 +150,14 @@ PNode * makeNode(int t, int c)
 	return temp;
 }
 
-void QInit(Queue * q)
+void QInit(tQueue * q)
 {
 	q->numOfData = 0;
 	q->front = NULL;
 	q->rear = NULL;
 }
 
-int QIsEmpty(Queue * q)
+int QIsEmpty(tQueue * q)
 {
 	if(q->numOfData == 0)
 		return 1;
@@ -165,7 +165,7 @@ int QIsEmpty(Queue * q)
 	return 0;
 }
 
-void Enqueue(Queue * q, QData data)
+void Enqueue(tQueue * q, QData data)
 {
 	q->numOfData++;
 	if(q->front == NULL)
@@ -183,12 +183,12 @@ void Enqueue(Queue * q, QData data)
 	q->front->prev = NULL;
 }
 
-QData pip(Queue * q)
+QData pip(tQueue * q)
 {
 	return q->rear->data;
 }
 
-QData Dequeue( Queue * q)
+QData Dequeue(tQueue * q)
 {
 	QData tmp = pip(q);
 	QNode * temp = q->rear;
@@ -287,7 +287,7 @@ int arrCheck(int * num, int ta)
 	return -1;
 }
 
-PNode * make_parsetree(Queue * q,int *t1, int *t2, int * c1, int * c2, int queryNum)
+PNode * make_parsetree(tQueue * q,int *t1, int *t2, int * c1, int * c2, int queryNum)
 {
 	PNode * rtemp, *ltemp, *ptemp = NULL;
 	int * num = (int*)malloc(sizeof(int) * queryNum * 2);
@@ -357,7 +357,7 @@ PNode* sort_selectivity(char ** query, int queryNum)
 	int *t1,*t2,*c1,*c2,temp,len;
 	int * Using;
 	double * slt, stemp,stemp2;
-	Queue *q, *q1, *qtemp;
+	tQueue *q, *q1, *qtemp;
 
 	t1 = (int*)malloc(sizeof(int) * queryNum);
 	t2 = (int*)malloc(sizeof(int) * queryNum);
@@ -365,8 +365,8 @@ PNode* sort_selectivity(char ** query, int queryNum)
 	c2 = (int*)malloc(sizeof(int) * queryNum);
 	slt = (double*)malloc(sizeof(double) * queryNum);
 	Using = (int*)malloc(sizeof(int) * (MAXTABLE+1));
-	q = (Queue*)malloc(sizeof(Queue));
-	q1 = (Queue*)malloc(sizeof(Queue));
+	q = (tQueue*)malloc(sizeof(tQueue));
+	q1 = (tQueue*)malloc(sizeof(tQueue));
 
 	for(i = 0 ; i < (MAXTABLE + 1) ; i++)
 		Using[i] = 0;
@@ -475,7 +475,7 @@ PNode* sort_selectivity(char ** query, int queryNum)
 		Using[k] = 1;
 		free(q);
 		q = q1;
-		q1 = (Queue*)malloc(sizeof(Queue));	
+		q1 = (tQueue*)malloc(sizeof(tQueue));	
 		QInit(q1);
 	}
 	free(q1);

@@ -25,4 +25,5 @@ int get_neighbor_index(node * n, pagenum_t offset, pagenum_t * neighbor_offset,i
 node * adjust_root(node * root,int p);
 node * remove_entry_from_node(node * n, dbint key, void * pointer, pagenum_t offset,int p);
 node * coalesce_nodes(node * n, pagenum_t curoffset, pagenum_t noffset, int n_index,int p);
+dbint get_leaf_page_id(node * root, dbint key, int p);
 #endif

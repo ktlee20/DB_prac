@@ -26,7 +26,7 @@ int main(int argc, char * argv[])
 		insert(k,i, arr);
 	}
 	for(i = 0 ; i < 100000; i++)
-		find(k,i);
+		no_th_find(k,i);
 	for(i = 0 ; i < 100000; i++)
 		erase(k,i);
 
@@ -40,7 +40,7 @@ int main(int argc, char * argv[])
 		erase(k,i);
 	for(i = 0 ; i < 100000 ; i++)
 	{
-		if((temp=find(k,i)) != NULL)
+		if((temp=no_th_find(k,i)) != NULL)
 		{
 			printf("%d : %ld %ld %ld\n",i,temp[0],temp[1],temp[2]);
 			free(temp);
@@ -62,7 +62,7 @@ int main(int argc, char * argv[])
 		insert(k,i, arr1);
 	}
 	for(i = 0 ; i < 100000; i++)
-		find(k,i);
+		no_th_find(k,i);
 	for(i = 0 ; i < 100000; i++)
 		erase(k,i);
 
@@ -76,7 +76,7 @@ int main(int argc, char * argv[])
 		erase(k,i);
 	for(i = 0 ; i < 100000 ; i++)
 	{
-		if((temp=find(k,i)) != NULL)
+		if((temp=no_th_find(k,i)) != NULL)
 		{
 			printf("%d : %ld %ld %ld %ld\n",i,temp[0],temp[1],temp[2],temp[3]);
 			free(temp);
@@ -96,7 +96,7 @@ int main(int argc, char * argv[])
 		insert(k,i, arr2);
 	}
 	for(i = 0 ; i < 100000; i++)
-		find(k,i);
+		no_th_find(k,i);
 	for(i = 0 ; i < 100000; i++)
 		erase(k,i);
 
@@ -109,7 +109,7 @@ int main(int argc, char * argv[])
 		erase(k,i);
 	for(i = 0 ; i < 100000 ; i++)
 	{
-		if((temp=find(k,i)) != NULL)
+		if((temp=no_th_find(k,i)) != NULL)
 		{
 			printf("%d : %ld\n",i,temp[0]);
 			free(temp);
@@ -129,7 +129,7 @@ int main(int argc, char * argv[])
 		insert(k,i, arr3);
 	}
 	for(i = 0 ; i < 10000; i++)
-		find(k,i);
+		no_th_find(k,i);
 	for(i = 0 ; i < 10000; i++)
 		erase(k,i);
 
@@ -144,7 +144,7 @@ int main(int argc, char * argv[])
 		erase(k,i);
 	for(i = 0 ; i < 10000 ; i++)
 	{
-		if((temp=find(k,i)) != NULL)
+		if((temp=no_th_find(k,i)) != NULL)
 		{
 			printf("%d : %ld %ld \n",i,temp[0],temp[1]);
 			free(temp);
@@ -165,7 +165,7 @@ int main(int argc, char * argv[])
 		insert(k,i, arr);
 	}
 	for(i = 0 ; i < 10000; i++)
-		find(k,i);
+		no_th_find(k,i);
 	for(i = 0 ; i < 10000; i++)
 		erase(k,i);
 
@@ -179,7 +179,7 @@ int main(int argc, char * argv[])
 		erase(k,i);
 	for(i = 0 ; i < 10000 ; i++)
 	{
-		if((temp=find(k,i)) != NULL)
+		if((temp=no_th_find(k,i)) != NULL)
 		{
 			printf("%d : %ld %ld %ld\n",i,temp[0],temp[1],temp[2]);
 			free(temp);

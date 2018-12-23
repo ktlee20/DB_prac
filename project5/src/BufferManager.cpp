@@ -4,7 +4,6 @@
 #include <pthread.h>
 #include "defines.h"
 #include "BufferManager.h"
-#include "LockManager.h"
 #include "DiskManager.h"
 #include "globals.h"
 
@@ -89,10 +88,9 @@ Page * set_leaf_page(Page * dest, Page * src)
 
 void buf_flush_page(pagenum_t offset, int table_id)
 {
-	Bufstrt * tempNode;
+	Bufstrt * tempNode = find_leaf_buffer(offset, table_id);
 	Bufstrt * oldNode;
 
- 	tempNode = find_leaf_buffer(offset, table_id);
 	if(tempNode == NULL)
 		return;
 	else
@@ -156,42 +154,65 @@ void buf_flush_page(pagenum_t offset, int table_id)
 	}
 }
 
-Page * buf_read_page(pagenum_t offset, Page * dest ,int table_id, int tid, dbint key)
+Bufstrt * get_buf_node(pagenum_t offset, int table_id)
 {
-	Bufstrt * tempNode;
-	Bufstrt * oldNode;
-	lock_t * retlock;
-	LMODE mode;
-
+	Bufstrt * tempNode, * oldNode;
 	pthread_mutex_lock(&bufctrl[table_id].buf_ctrl_mutex);
 	
-	tempNode = find_leaf_buffer(offset, table_id);
-	
-	//버퍼 컨트롤 블록 락은 lock, 페이지 래치는 trylock
+	tempNode = find_leaf_buffer(offset, table_id);	
+
 	if(tempNode != NULL)
 	{
-		//버퍼 전체에 락을 걸고, 원하는 버퍼를 찾는다. 찾은 후, 해당 버퍼에 락을 걸고 이를 락테이블에 걸어둔다.
-		pthread_mutex_lock(&tempNode->buf_mutex);	
-		retlock = Insert_Lock_Table(offset, tid, key, table_id,__sync_fetch_and_add(&timer[table_id],1),SHARED, &mode); 
-		buf_lru_set(tempNode,table_id);	
-		tempNode->is_pinned++;
-		if(mode == EXCLUSIVE)
+		buf_lru_set(tempNode,table_id);
+	}
+	else
+	{
+		tempNode = makeBufNode();
+		if(bufctrl[table_id].curPos == 0)
 		{
-			pthread_mutex_unlock(&bufctrl[table_id].buf_ctrl_mutex);
-			//잠들기 직전에 항상 걸고 있는 락 확인!!
-			pthread_cond_wait(&retlock->cond, &tempNode->buf_mutex);
-			pthread_mutex_lock(&bufctrl[table_id].buf_ctrl_mutex);
-			//pthread_mutex_lock(&tempNode->buf_mutex);	
+			bufferAttr(tempNode, offset, table_id);
+			bufctrl[table_id].buffer = bufctrl[table_id].bufferlast = tempNode;
+			file_read_page(offset, &bufctrl[table_id].buffer->frame, table_id);
+			bufctrl[table_id].curPos++;
 		}
-		//버퍼 전체에 건 락을 풀고 나간다.
-		//SL인 경우 XL이 막고 있는 경우, L이 없는 경우
+		else if(bufctrl[table_id].bufsize > bufctrl[table_id].curPos)
+		{
+			bufferAttr(tempNode, offset, table_id);
+			bufctrl[table_id].bufferlast->next = tempNode;
+			tempNode->prev = bufctrl[table_id].bufferlast;
+			bufctrl[table_id].bufferlast = tempNode;
+			file_read_page(offset, &bufctrl[table_id].bufferlast->frame, table_id);
+			bufctrl[table_id].bufferlast->next = NULL;
+			bufctrl[table_id].curPos++;
+		}
 		else
 		{
-			pthread_mutex_unlock(&bufctrl[table_id].buf_ctrl_mutex);	
-			pthread_mutex_unlock(&tempNode->buf_mutex);
+			bufferAttr(tempNode, offset ,table_id);
+			file_write_page(get_page_offset(bufctrl[table_id].buffer), &bufctrl[table_id].buffer->frame, table_id);
+			oldNode = bufctrl[table_id].buffer;
+			bufctrl[table_id].buffer = bufctrl[table_id].buffer->next;
+			bufctrl[table_id].buffer->prev = NULL;
+			free(oldNode);
+			bufctrl[table_id].bufferlast->next = tempNode;
+			tempNode->prev = bufctrl[table_id].bufferlast;
+			bufctrl[table_id].bufferlast = tempNode;
+			file_read_page(offset, &bufctrl[table_id].bufferlast->frame, table_id);
+			bufctrl[table_id].bufferlast->next = NULL;
 		}
-		memcpy(dest, &tempNode->frame, PAGESIZE);	
-		//락테이블에 있는 댜음 친구들을 풀어준다.
+	}
+	
+	return tempNode;
+}
+
+Page * buf_read_page(pagenum_t offset, Page * dest ,int table_id)
+{
+	Bufstrt * tempNode = find_leaf_buffer(offset, table_id);
+	Bufstrt * oldNode;
+
+	if(tempNode != NULL)
+	{
+		buf_lru_set(tempNode,table_id);	
+		memcpy(dest, &tempNode->frame, PAGESIZE);
 		return &tempNode->frame;	
 	}
 	else
@@ -200,22 +221,9 @@ Page * buf_read_page(pagenum_t offset, Page * dest ,int table_id, int tid, dbint
 		{
 			tempNode = makeBufNode();
 			bufferAttr(tempNode, offset, table_id);
+			bufctrl[table_id].buffer = bufctrl[table_id].bufferlast = tempNode;
 			file_read_page(offset, &bufctrl[table_id].buffer->frame, table_id);
 			bufctrl[table_id].curPos++;	
-
-			retlock = Insert_Lock_Table(offset, tid, key, table_id, __sync_fetch_and_add(&timer[table_id],1), SHARED , &mode);
-			tempNode->is_pinned++;
-			pthread_mutex_unlock(&bufctrl[table_id].buf_ctrl_mutex);
-
-			if(mode == EXCLUSIVE)
-			{
-				pthread_cond_wait(&retlock->cond, &tempNode->buf_mutex);
-			}					
-			bufctrl[table_id].buffer = bufctrl[table_id].bufferlast = tempNode;
-			memcpy(dest, &tempNode->frame, PAGESIZE);	
-
-			return &tempNode->frame;	
-		
 		}
 		else if(bufctrl[table_id].bufsize > bufctrl[table_id].curPos)
 		{
@@ -227,51 +235,11 @@ Page * buf_read_page(pagenum_t offset, Page * dest ,int table_id, int tid, dbint
 			file_read_page(offset, &bufctrl[table_id].bufferlast->frame, table_id);	
 			bufctrl[table_id].bufferlast->next = NULL;
 			bufctrl[table_id].curPos++;	
-		
-			pthread_mutex_lock(&tempNode->buf_mutex);
-			retlock = Insert_Lock_Table(offset, tid, key, table_id, __sync_fetch_and_add(&timer[table_id],1), SHARED, &mode);
-			tempNode->is_pinned++;
-			if(mode == EXCLUSIVE)
-			{
-				pthread_mutex_unlock(&bufctrl[table_id].buf_ctrl_mutex);
-				pthread_cond_wait(&retlock->cond, &tempNode->buf_mutex);
-			}
-			else
-			{
-				pthread_mutex_unlock(&bufctrl[table_id].buf_ctrl_mutex);
-				pthread_mutex_unlock(&tempNode->buf_mutex);
-			}
-
-			memcpy(dest, &tempNode->frame, PAGESIZE);	
-
-			return &tempNode->frame;	
 		}
 		else
 		{
 			tempNode = makeBufNode();		
 			bufferAttr(tempNode, offset, table_id);
-			pthread_mutex_lock(&tempNode->buf_mutex);	
-			retlock = Insert_Lock_Table(offset, tid, key, table_id, __sync_fetch_and_add(&timer[table_id],1), SHARED, &mode);
-			tempNode->is_pinned++;
-			//pinned가 0이면 broadcast 하자
-			if(mode == EXCLUSIVE)
-			{
-				pthread_mutex_unlock(&bufctrl[table_id].buf_ctrl_mutex);
-				pthread_cond_wait(&retlock->cond, &tempNode->buf_mutex);
-			}			
-			else
-			{
-				pthread_mutex_unlock(&bufctrl[table_id].buf_ctrl-mutex);
-				pthread_mutex_unlock(&tempNode->buf_mutex);
-			}
-
-			while(bufctrl[table_id].buffer->is_pinned != 1)
-			{
-				pthread_mutex_unlock(&bufctrl[table_id].buf_ctrl_mutex);
-				pthread_cond_wait(&retlock->cond, &tempNode->buf_mutex);
-				pthread_mutex_lock(&bufctrl[table_id].buf_ctrl_mutex);
-			}	
-
 			file_write_page(get_page_offset(bufctrl[table_id].buffer), &bufctrl[table_id].buffer->frame, table_id);
 			oldNode = bufctrl[table_id].buffer;
 			bufctrl[table_id].buffer = bufctrl[table_id].buffer->next;
@@ -282,7 +250,6 @@ Page * buf_read_page(pagenum_t offset, Page * dest ,int table_id, int tid, dbint
 			bufctrl[table_id].bufferlast = tempNode;
 			file_read_page(offset, &bufctrl[table_id].bufferlast->frame, table_id);
 			bufctrl[table_id].bufferlast->next = NULL;
-			pthread_mutex_unlock(&bufctrl[table_id].buf_ctrl_mutex);
 		}
 	}
 	
@@ -322,10 +289,9 @@ void buf_lru_set(Bufstrt * node, int table_id)
 
 void buf_write_page(pagenum_t offset, Page * src ,int table_id)
 {
-	Bufstrt * tempNode;
+	Bufstrt * tempNode = find_leaf_buffer(offset, table_id);
 	Bufstrt * oldNode;		
 
-	tempNode = find_leaf_buffer(offset, table_id);
 	if(tempNode != NULL)
 	{
 		memcpy(&tempNode->frame, src, PAGESIZE);

@@ -20,10 +20,10 @@
 
 #define FALSE 0
 #define TRUE 1
+#define DEADLOCK 1
+#define NODEADLOCK 0
 #define SUCCESS 1
 #define FAILED 0
-#define HINIT -1
-#define HDEL -2
 
 #define CUT(x) ((x) / 2)
 #define _ROOTP header->pheader.rootp_offset
@@ -31,8 +31,8 @@
 typedef int64_t dbint;
 typedef dbint pagenum_t;
 
-typedef enum lock_mode { EMBRYO, SHARED, EXCLUSIVE } LMODE;
-enum txn_state { EMBRYO, IDLE, RUNNING, WAITING , DEAD};
+typedef enum lock_mode { SHARED, EXCLUSIVE } LMODE;
+typedef enum txn_state { EMBRYO, IDLE, RUNNING, WAITING , DEAD} TMODE;
 
 typedef struct page_header
 {
@@ -90,10 +90,10 @@ typedef union _pages_
 	struct internal_page internalp;
 } Page;
 
+
 //Buffer
 typedef struct _buf_struct
 {
-	pthread_mutex_t buf_mutex;
 	int table_id;
 	int is_dirty;
 	int is_pinned;
@@ -158,12 +158,12 @@ typedef struct _qnode
 	struct _qnode * prev;
 }	QNode;
 
-typedef struct queue
+typedef struct __queue_
 {
 	int numOfData;
 	QNode * front;
 	QNode * rear;
-} Queue;
+} tQueue;
 
 typedef struct _t_qsort
 {
@@ -180,6 +180,7 @@ typedef struct _lnode_
 
 typedef struct _dlnode_
 {
+	int isvisit;
 	struct __lock_ *lock;	
 	struct _dlnode_ *next;
 	struct _dlnode_ *prev;
@@ -187,11 +188,11 @@ typedef struct _dlnode_
 
 typedef struct _hash_slot_
 {
-	dbint key;
+	int page_id;	
 	struct _dlnode_ *head;
 	struct _dlnode_ *tail;
-	struct _hash_slot_ * next;
-} Hash;
+	struct _hash_slot_ *next;
+} tHash;
 
 typedef struct _txn_link_
 {
@@ -210,26 +211,38 @@ typedef struct _txn_linked_list
 typedef struct _lock_table_
 {
 	pthread_mutex_t ltmutex;	
-	Hash * HashTable[HSIZE + 1];
+	tHash * HashTable[HSIZE];
 } LockTable;
+
+typedef struct _log_
+{
+	dbint table_id;
+	dbint page_id;
+	dbint record_id;
+	dbint * olddata;
+	dbint * newdata;
+} Log;
 
 typedef struct __txn_
 {
 	int tid;
-	enum txn_state state;
+	TMODE mode;
 	LNode * txn_locks;
 	struct __lock_* wait_locks;
+	int lognum;
+	Log * logs;
 } txn_t;
 
 typedef struct __lock_ 
 {
 	int table_id;
-	dbint key;
-	enum lock_mode mode;	
+	LMODE mode;	
 	struct __txn_* txn;
 	pthread_cond_t cond;
 	dbint page_id;
 	uint64_t timestamp;
+	Bufstrt * buffer;
+	pthread_mutex_t lock_mutex;
 } lock_t;
 
 #endif

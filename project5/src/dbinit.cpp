@@ -20,9 +20,8 @@ void globalInit(int i)
 	rootpage[i] = NULL;
 	oinfo[i] = NULL;
 	memory_key[i] = NULL;
-	timer[i] = 0;
 	pthread_mutex_init(&locktable[i].ltmutex, NULL);	
-	for(j = 0 ; j <= HSIZE; j++)
+	for(j = 0 ; j < HSIZE; j++)
 		locktable[i].HashTable[j] = NULL;	
 }
 
