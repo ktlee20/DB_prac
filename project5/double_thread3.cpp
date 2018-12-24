@@ -38,11 +38,6 @@ void * func_txn1(void * arg)
 	dbint * temp;
 	tid = begin_tx();
 	dbint arr[3] = {0,1,2};
-	update(table_id1, 500, arr, tid, result);	
-	for(i = 1 ; i < 50 ; i++)
-	{
-		update(table_id1, i, arr, tid, result);	
-	}
 	for(i = 1 ; i < 100 ; i += 2)
 	{
 		temp = find(table_id1, i, tid, result);	
@@ -66,11 +61,6 @@ void * func_txn2(void * arg)
 	dbint * temp;
 	dbint arr[3] = {0,1,2};
 	while(get_global_state() == 0);
-	update(table_id1, 500, arr, tid, result);
-	for(i = 1 ; i < 50 ; i++)
-	{
-		update(table_id1, i, arr, tid, result);	
-	}
 	for(i = 1 ; i < 100 ; i += 2)
 	{
 		temp = find(table_id1, i, tid, result);	

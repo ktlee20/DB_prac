@@ -147,12 +147,14 @@ dbint * find(int table_id, dbint key, int tid, int * result)
 		return NULL;
 	}	
 	
+	pthread_mutex_unlock(&bufctrl[table_id].buf_ctrl_mutex);
 	pthread_mutex_lock(&lock->lock_mutex);
 	while(lock->txn->mode != RUNNING)
 	{
 		pthread_cond_wait(&lock->cond, &lock->lock_mutex);
 	}
 	pthread_mutex_unlock(&lock->lock_mutex);
+	pthread_mutex_lock(&bufctrl[table_id].buf_ctrl_mutex);
 	page = &lock->buffer->frame;	
 
 	for(i = 0 ; i < page->leafp.pheader.numOfKeys ; i++)
@@ -190,12 +192,15 @@ int update(int table_id, dbint key, dbint * values, int tid, int * result)
 		return 0;
 	}
 
+	pthread_mutex_unlock(&bufctrl[table_id].buf_ctrl_mutex);
 	pthread_mutex_lock(&lock->lock_mutex);
 	while(lock->txn->mode != RUNNING)
 	{
 		pthread_cond_wait(&lock->cond, &lock->lock_mutex);
 	}
 	pthread_mutex_unlock(&lock->lock_mutex);
+	pthread_mutex_lock(&bufctrl[table_id].buf_ctrl_mutex);
+
 	page = &lock->buffer->frame;
 
 	for(i = 0 ; i < page->leafp.pheader.numOfKeys ; i++)

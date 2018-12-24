@@ -38,19 +38,14 @@ void * func_txn1(void * arg)
 	dbint * temp;
 	tid = begin_tx();
 	dbint arr[3] = {0,1,2};
-	update(table_id1, 500, arr, tid, result);	
-	for(i = 1 ; i < 50 ; i++)
-	{
-		update(table_id1, i, arr, tid, result);	
-	}
-	for(i = 1 ; i < 100 ; i += 2)
-	{
-		temp = find(table_id1, i, tid, result);	
-		if(temp == NULL)
-			continue;
+	temp = find(table_id1, 2, tid, result);	
+	if(temp != NULL)
 		printf("%ld %ld %ld %ld\n",temp[0],temp[1],temp[2], temp[3]);
-	}
-	set_global_state(1);
+
+	sleep(3);
+	update(table_id1, 500, arr, tid, result);	
+
+
 	sleep(5);
 	printf("txn1 finish\n");
 	end_tx(tid);
@@ -65,19 +60,13 @@ void * func_txn2(void * arg)
 	int i;
 	dbint * temp;
 	dbint arr[3] = {0,1,2};
-	while(get_global_state() == 0);
-	update(table_id1, 500, arr, tid, result);
-	for(i = 1 ; i < 50 ; i++)
-	{
-		update(table_id1, i, arr, tid, result);	
-	}
-	for(i = 1 ; i < 100 ; i += 2)
-	{
-		temp = find(table_id1, i, tid, result);	
-		if(temp == NULL)
-			continue;
+
+	temp = find(table_id1, 500, tid, result);	
+	if(temp != NULL)
 		printf("%ld %ld %ld %ld\n",temp[0],temp[1],temp[2], temp[3]);
-	}
+
+	update(table_id1, 2, arr, tid, result);
+
 	printf("txn2 finish\n");
 	end_tx(tid);	
 

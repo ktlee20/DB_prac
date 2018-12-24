@@ -97,6 +97,7 @@ void TXN_LInsert(txn_t * txn)
 		{
 			temp->next = newNode;
 			newNode->prev = temp;
+			newNode->next = NULL;
 			txnlist.tail = newNode;
 		}
 		else
@@ -490,11 +491,26 @@ DLNode * find_dlnode(tHash * thash, int temp)
 		return NULL;
 }
 
+int deadlock_txn(lock_t * lock, dbint page_id)
+{
+	txn_t * dtxn = lock->txn;
+	LNode * locknode = dtxn->txn_locks;
+	lock_t * dlock;
+	
+	while(locknode != NULL)
+	{
+		dlock = locknode->lock;	
+		if(dlock->page_id == page_id)
+			return 1;
+		locknode = locknode->next;
+	}	
+	return 0;
+}
+
 int deadlock_check(int tid, dbint page_id, int table_id, LMODE mode)
 {
 	int size = txnSize();
 	int head = txnHead();
-	int * visit = (int*)malloc(sizeof(int) * size);
 	int temp = tid;
 	int hash;
 	txn_t * ttxn;
@@ -502,55 +518,31 @@ int deadlock_check(int tid, dbint page_id, int table_id, LMODE mode)
 	LNode * locknode;
 	tHash * thash = find_thash(table_id, page_id, page_id % HSIZE);
 	DLNode * dltemp,* dltemp2;
-	queue<int> q1;
 	queue<DLNode*> q2, q3;
 	
-	memset(visit, 0, sizeof(int) * size);
 	dltemp = thash->tail;	
 
-	visit[temp] = 1;
-	q1.push(temp);
-	
-	temp = q1.front();
-	q1.pop();
-	hash = page_id % HSIZE;
+	dltemp->isvisit = 1;
+	q3.push(dltemp);
 
+	ttxn = TXN_LFind(temp);
 
-	while(dltemp != NULL)
+	locknode = ttxn->txn_locks;	
+
+	while(locknode != NULL)
 	{
-		dltemp->isvisit = 1;
-		q3.push(dltemp);
+		tlock = locknode->lock;
+		hash = (tlock->page_id) % HSIZE;
+		thash = find_thash(tlock->table_id, page_id ,hash);
+		dltemp = find_dlnode(thash, temp);
 
-		temp = dltemp->lock->txn->tid;
-		if(visit[temp] != 1)
-			q1.push(temp);
-
-		dltemp = dltemp->prev;
-	}
-	
-	while(!q1.empty())
-	{
-		temp = q1.front();	
-		q1.pop();
-		ttxn = TXN_LFind(temp);
-
-		locknode = ttxn->txn_locks;	
-
-		while(locknode != NULL)
+		if(dltemp->isvisit == 0)
 		{
-			tlock = locknode->lock;
-			hash = (tlock->page_id) % HSIZE;
-			thash = find_thash(tlock->table_id, page_id ,hash);
-			dltemp = find_dlnode(thash, temp);
-
-			if(dltemp->isvisit == 0)
-			{
-				dltemp->isvisit = 1;
-				q2.push(dltemp);		
-				q3.push(dltemp);
-			}
-			locknode = locknode->next;
+			dltemp->isvisit = 1;
+			q2.push(dltemp);		
+			q3.push(dltemp);
 		}
+		locknode = locknode->next;
 	}
 	
 	while(!q2.empty())
@@ -561,7 +553,7 @@ int deadlock_check(int tid, dbint page_id, int table_id, LMODE mode)
 
 		while(dltemp2 != NULL)
 		{
-			if(dltemp2->lock->page_id == page_id)
+			if(deadlock_txn(dltemp2->lock, page_id))
 			{
 				while(!q3.empty())
 				{
@@ -572,6 +564,7 @@ int deadlock_check(int tid, dbint page_id, int table_id, LMODE mode)
 
 				return DEADLOCK;			
 			}
+
 			ttxn = dltemp2->lock->txn;
 			locknode = ttxn->txn_locks;
 
@@ -591,8 +584,8 @@ int deadlock_check(int tid, dbint page_id, int table_id, LMODE mode)
 			}
 			dltemp2 = dltemp2->next;
 		}
-
 	}
+
 	while(!q3.empty())
 	{
 		dltemp = q3.front();
@@ -743,6 +736,7 @@ int abort_txn(txn_t * txn)
 {
 	recover_log(txn);	
 	delete_from_lock_table(txn);	
+	printf("abort\n");
 	TXN_LDelete(txn->tid);
 	free(txn);	
 
@@ -793,6 +787,10 @@ int end_tx(int tid)
 	LNode * temp_locks;
 	LNode * temp;
 
+	if(dtxn == NULL)
+	{
+		return 0;	
+	}
 	isVisit = force(dtxn);
 	delete_from_lock_table(dtxn);	
 	for(i = 1 ; i <= MAXTABLE ; i++)
